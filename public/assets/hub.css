@@ -153,6 +153,12 @@ main { position: relative; max-width: 90rem; margin: 0 auto; padding: 1.5rem; }
   .home-right { min-height: 0; overflow-y: auto; padding-right: .25rem; }
 }
 
+.kiosk-foot { max-width: 90rem; margin: 0 auto; padding: 0 1.5rem 1rem; text-align: right; }
+.kiosk-foot a { font-size: .7rem; color: var(--muted-fg); opacity: .6; text-decoration: none; }
+.kiosk-foot a:hover { opacity: 1; text-decoration: underline; }
+@media (min-width: 1024px) { .kiosk-foot { margin-top: -1.5rem; } }
+@media print { .kiosk-foot { display: none; } }
+
 /* Open (embedded form) --------------------------------------------------- */
 body.open-page { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
 .openbar { flex: none; display: flex; align-items: center; gap: .75rem; height: 3.75rem; padding: 0 1rem; border-bottom: 1px solid var(--border); background: var(--muted); }

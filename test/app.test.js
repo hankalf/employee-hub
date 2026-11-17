@@ -59,7 +59,10 @@ async function signIn() {
 
 test("health check and kiosk pages are public", async () => {
   assert.equal((await fetch(base + "/healthz")).status, 200);
-  for (const p of ["/", "/qr", "/open/t/abc", "/open/l/abc"]) {
+  const root = await fetch(base + "/", { redirect: "manual" });
+  assert.equal(root.status, 302);
+  assert.equal(root.headers.get("location"), "/kiosk");
+  for (const p of ["/kiosk", "/qr", "/open/t/abc", "/open/l/abc"]) {
     const r = await fetch(base + p);
     assert.equal(r.status, 200, p);
     assert.match(r.headers.get("content-type"), /text\/html/);

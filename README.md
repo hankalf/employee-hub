@@ -4,10 +4,10 @@ A shared hub for warehouse employees, shown on an iPad kiosk or opened on a phon
 
 This is a rebuild of the original monday-hosted Employee Hub as a plain Node.js app so it can run on Railway like your other apps. Instead of custom forms that wrote to boards through monday's SDK, each tile is a monday.com **form link** that you assign in the admin area. The forms open inside the hub, and the kiosk returns to the home screen on its own afterwards.
 
-- **Home** (`/`): greeting, tool tiles, quick links and board panels. Refreshes itself, so the kiosk never needs reloading.
+- **Kiosk** (`/kiosk`): greeting, tool tiles, quick links and board panels, for the tablet or a computer screen. Refreshes itself, so it never needs reloading. The root address `/` redirects here, so the short address on the QR code still works.
 - **Form page** (`/open/t/…`): a tile's form inside the hub with a "Back to hub" button. After a period with no taps it returns home.
 - **QR code** (`/qr`): a printable code that opens the hub on a phone. A small one is also in the top bar.
-- **Admin** (`/admin`): tiles, board panels, quick links and settings.
+- **Admin** (`/admin`): where you add and update tiles, board panels, quick links and settings, protected by the `ADMIN_PASSWORD` service variable. Reached from the small *Admin* link at the bottom of the kiosk page, or by typing the address.
 
 No database: settings are a JSON file on a Railway Volume. No build step.
 
@@ -28,7 +28,7 @@ No database: settings are a JSON file on a Railway Volume. No build step.
    | `MONDAY_CACHE_SECONDS` | optional | How long board data is reused before asking monday.com again (default 45). |
 
 4. **Get a web address.** Service → *Settings → Networking → Generate Domain*, or add your own domain.
-5. Open `https://<your-domain>/admin`, sign in, and paste your form links into the tiles.
+5. Open `https://<your-domain>/admin`, sign in, and paste your form links into the tiles. The kiosk itself is at `https://<your-domain>/kiosk`.
 
 ### The monday.com API token
 
@@ -78,7 +78,7 @@ Every title and description you enter has an English and a Spanish box; Spanish 
 
 ### iPad kiosk tips
 
-- Open the hub in Safari and *Add to Home Screen*; launching it from there hides the browser bars.
+- Open `https://<your-domain>/kiosk` in Safari and *Add to Home Screen*; launching it from there hides the browser bars.
 - Turn on **Guided Access** (Settings → Accessibility) so people can't leave the hub.
 - *Settings → Return to home after* controls how long a form stays open with no taps before the kiosk goes back to the home screen (default 5 minutes; the last 30 seconds show a warning that any tap cancels).
 
@@ -89,7 +89,7 @@ Every title and description you enter has an English and a Spanish box; Spanish 
 ```bash
 npm install
 ADMIN_PASSWORD=secret123 MONDAY_API_TOKEN=... npm start
-# → http://localhost:3000   admin at http://localhost:3000/admin
+# → kiosk at http://localhost:3000/kiosk   admin at http://localhost:3000/admin
 npm test                    # automated tests (uses a fake monday.com, no token needed)
 ```
 

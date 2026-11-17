@@ -64,7 +64,7 @@
     window.addEventListener("focus", reset);
     setInterval(function () {
       var left = Math.ceil((deadline - Date.now()) / 1000);
-      if (left <= 0) { location.href = "/"; return; }
+      if (left <= 0) { location.href = "/kiosk"; return; }
       if (left <= WARN_SECONDS) {
         overlay.hidden = false;
         $("idle-title").textContent = H.t("returning", left);
