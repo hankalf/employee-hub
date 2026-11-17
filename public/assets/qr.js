@@ -4,10 +4,14 @@
   var $ = function (id) { return document.getElementById(id); };
   function render(hub) {
     H.resolveLang(hub.settings);
-    $("brand-name").textContent = H.pick(hub.settings.hubName) || "Employee Hub";
+    H.applyAppearance(hub.appearance);
+    H.renderBrand($("brand"), hub);
     H.renderLangToggle($("lang-toggle"), hub.settings, function () { render(hub); });
+    var logo = $("qr-logo");
+    logo.hidden = !hub.logo;
+    if (hub.logo) logo.src = "/logo?v=" + encodeURIComponent(hub.logo);
     $("eyebrow").textContent = H.t("qrEyebrow");
-    $("title").textContent = H.t("qrTitle");
+    $("title").textContent = H.pick(hub.settings.hubName) || H.t("qrTitle");
     document.title = H.t("qrTitle");
     $("qr").alt = H.t("qrAlt");
     $("url").textContent = hub.publicUrl || "";

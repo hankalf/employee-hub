@@ -9,17 +9,14 @@ const config = {
   dataDir: path.resolve(process.env.DATA_DIR || process.env.RAILWAY_VOLUME_MOUNT_PATH || path.join(__dirname, "storage")),
   adminPassword: process.env.ADMIN_PASSWORD || "",
   sessionSecret: process.env.SESSION_SECRET || "",
-  mondayToken: process.env.MONDAY_API_TOKEN || "",
-  mondayCacheSeconds: Number(process.env.MONDAY_CACHE_SECONDS) || 45,
   publicUrl: process.env.PUBLIC_URL || "",
 };
 
 if (process.env.RAILWAY_ENVIRONMENT && !process.env.RAILWAY_VOLUME_MOUNT_PATH && !process.env.DATA_DIR) {
-  console.warn("⚠️  No Railway Volume attached — tiles, panels and links will be LOST on every redeploy. " +
+  console.warn("⚠️  No Railway Volume attached — tiles, settings and the logo will be LOST on every redeploy. " +
     "Add a Volume to this service (mount path /data).");
 }
 if (!config.adminPassword) console.warn("⚠️  ADMIN_PASSWORD is not set — the admin area is disabled until it is.");
-if (!config.mondayToken) console.warn("ℹ️  MONDAY_API_TOKEN is not set — board panels will show as unavailable until it is.");
 
 createApp(config).then(({ app }) => {
   const server = app.listen(config.port, () => {

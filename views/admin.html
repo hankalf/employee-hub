@@ -12,7 +12,7 @@
 <body class="admin-page">
   <header class="admin-top">
     <div class="admin-top-inner">
-      <a class="brand" href="/admin"><span class="pill spectrum" aria-hidden="true"></span><span>Employee Hub · Admin</span></a>
+      <a class="brand" id="brand" href="/admin"><span class="pill spectrum" aria-hidden="true"></span><span class="brand-name">Employee Hub · Admin</span></a>
       <nav>
         <a href="/kiosk" target="_blank" rel="noopener">Open the kiosk ↗</a>
         <a href="/qr" target="_blank" rel="noopener">QR code ↗</a>
@@ -24,47 +24,69 @@
   <main class="admin-main">
     <div class="tabs" role="tablist">
       <button type="button" role="tab" data-tab="tiles" aria-selected="true">Tiles</button>
-      <button type="button" role="tab" data-tab="panels" aria-selected="false">Board panels</button>
-      <button type="button" role="tab" data-tab="links" aria-selected="false">Quick links</button>
       <button type="button" role="tab" data-tab="settings" aria-selected="false">Settings</button>
     </div>
 
     <section id="tab-tiles" class="tab">
       <div class="tab-head">
-        <div><h2>Tiles</h2><p>The big buttons on the kiosk home screen. Paste a monday.com form share link into each one; forms open inside the hub and the kiosk returns home afterwards.</p></div>
+        <div><h2>Tiles</h2><p>The buttons on the kiosk. Paste a monday.com form share link into each one; forms open inside the hub and the kiosk returns home afterwards. Use the arrows to change the order.</p></div>
         <button type="button" class="btn" id="add-tile">+ Add tile</button>
       </div>
       <ul id="tiles-list" class="items frost"></ul>
     </section>
 
-    <section id="tab-panels" class="tab" hidden>
-      <div class="tab-head">
-        <div><h2>Board panels</h2><p>Live lists read from your monday.com boards, shown on the right of the home screen — for example forklifts that are out of service, or today's checklist submissions. Anyone who can open the hub can see what you choose to show.</p></div>
-        <button type="button" class="btn" id="add-panel">+ Add panel</button>
-      </div>
-      <div id="panels-monday-warning" class="alert-box" hidden></div>
-      <ul id="panels-list" class="items frost"></ul>
-    </section>
-
-    <section id="tab-links" class="tab" hidden>
-      <div class="tab-head">
-        <div><h2>Quick links</h2><p>Smaller cards for handbooks, schedules, monday.com boards or dashboards, and other resources.</p></div>
-        <button type="button" class="btn" id="add-link">+ Add link</button>
-      </div>
-      <ul id="links-list" class="items frost"></ul>
-    </section>
-
     <section id="tab-settings" class="tab" hidden>
-      <div class="tab-head"><div><h2>Settings</h2><p>Names, languages, kiosk timing and the monday.com connection.</p></div></div>
-      <div class="panel frost">
-        <h3>monday.com connection</h3>
-        <div class="status-card">
-          <span id="md-dot" class="dot"></span>
-          <div id="md-text" class="text">Checking…</div>
-          <button type="button" class="btn btn--ghost btn--small" id="md-test">Test connection</button>
+      <div class="tab-head"><div><h2>Settings</h2><p>The note on the kiosk, your logo, how the kiosk looks, and the hub's name and languages. Each section saves on its own.</p></div></div>
+
+      <form id="note-form" class="panel frost stack">
+        <h3>Note on the kiosk</h3>
+        <p class="hint">Shown beside the greeting at the top of the kiosk page. Use it for announcements, reminders or safety messages.</p>
+        <div class="grid-2">
+          <label class="check"><input type="checkbox" id="n-active" /> Show the note</label>
+          <label>Style<select id="n-style"><option value="info">Info (blue)</option><option value="important">Important (red)</option><option value="success">Good news (green)</option></select></label>
+          <label>Title (English)<input type="text" id="n-title_en" maxlength="80" placeholder="Safety meeting Friday" /></label>
+          <label>Title (Spanish)<input type="text" id="n-title_es" maxlength="80" /></label>
+          <label>Text (English)<textarea id="n-body_en" maxlength="600" rows="3"></textarea></label>
+          <label>Text (Spanish)<textarea id="n-body_es" maxlength="600" rows="3"></textarea></label>
+          <label>Show until (optional)<input type="date" id="n-until" /><p class="hint">The note hides itself after this day.</p></label>
         </div>
-        <p class="hint">The API token is the <code>MONDAY_API_TOKEN</code> variable on the Railway service (monday.com → your avatar → Developers → My access tokens). It never leaves the server.</p>
-      </div>
+        <div class="field-row"><span></span><button type="submit" class="btn">Save note</button></div>
+      </form>
+
+      <form id="logo-form" class="panel frost stack">
+        <h3>Logo</h3>
+        <p class="hint">Shown in the top bar of the kiosk, on the QR page and here. A PNG or SVG with a transparent background works best; it is shown about 44 px tall. Max 2 MB. If the logo has dark text, set the theme below to <em>Always light</em>, or it will vanish on the dark theme.</p>
+        <div class="logo-row">
+          <div class="logo-preview" id="logo-preview"><span class="hint">No logo yet</span></div>
+          <div class="stack">
+            <input type="file" id="logo-file" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" />
+            <div class="field-row"><button type="submit" class="btn" id="logo-upload">Upload logo</button><button type="button" class="btn btn--danger" id="logo-remove" hidden>Remove logo</button></div>
+          </div>
+        </div>
+      </form>
+
+      <form id="appearance-form" class="panel frost stack">
+        <h3>Appearance</h3>
+        <div class="grid-3">
+          <label>Theme<select id="a-theme"><option value="auto">Follow the device (light / dark)</option><option value="light">Always light</option><option value="dark">Always dark</option></select></label>
+          <label>Accent style<select id="a-accentStyle"><option value="spectrum">Spectrum gradient</option><option value="solid">Solid colour</option></select></label>
+          <label>Accent colour<div class="colour-row"><input type="color" id="a-accent-picker" /><input type="text" id="a-accent" maxlength="7" placeholder="#0358f7" /></div></label>
+          <label>Background colour (optional)<div class="colour-row"><input type="color" id="a-background-picker" /><input type="text" id="a-background" maxlength="7" placeholder="Theme default" /><button type="button" class="btn btn--ghost btn--small" id="a-background-clear">Clear</button></div></label>
+          <label>Card style<select id="a-cardStyle"><option value="frosted">Frosted</option><option value="solid">Solid</option><option value="outline">Outline</option></select></label>
+          <label>Corners<select id="a-radius"><option value="round">Round</option><option value="soft">Soft</option><option value="square">Square</option></select></label>
+          <label>Font<select id="a-font"><option value="system">Modern (system)</option><option value="rounded">Rounded</option><option value="serif">Classic (serif)</option></select></label>
+          <label>Tile size<select id="a-tileSize"><option value="large">Large</option><option value="medium">Medium</option><option value="compact">Compact</option></select></label>
+          <label>Tiles per row<select id="a-tileColumns"><option value="auto">Automatic (fit the screen)</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></label>
+        </div>
+        <div class="grid-3">
+          <label class="check"><input type="checkbox" id="a-showCodes" /> Show the corner labels (01, 02…)</label>
+          <label class="check"><input type="checkbox" id="a-showDate" /> Show today's date</label>
+          <label class="check"><input type="checkbox" id="a-showIntro" /> Show the intro line</label>
+        </div>
+        <div class="field-row"><span class="hint">The preview below updates after you save.</span><button type="submit" class="btn">Save appearance</button></div>
+        <div class="preview-frame"><iframe id="preview" src="/kiosk" title="Kiosk preview" loading="lazy"></iframe></div>
+      </form>
+
       <form id="settings-form" class="panel frost stack">
         <h3>Hub</h3>
         <div class="grid-2">
@@ -84,29 +106,16 @@
           <label>Default language<select id="s-defaultLang"><option value="en">English</option><option value="es">Spanish</option></select></label>
         </div>
         <h3>Kiosk</h3>
-        <div class="grid-3">
+        <div class="grid-2">
           <label>Return to home after (seconds)<input type="number" id="s-idleReturnSeconds" min="0" max="3600" /><p class="hint">On a form page, with no taps for this long, the kiosk goes back to the home screen. 0 = never.</p></label>
-          <label>Refresh board panels every (seconds)<input type="number" id="s-refreshSeconds" min="15" max="3600" /></label>
-          <label>Time zone<input type="text" id="s-timeZone" placeholder="America/New_York" list="tz-list" /><p class="hint">Used for "today" and "this week" filters.</p></label>
+          <label>Public web address (for the QR code)<input type="url" id="s-publicUrl" placeholder="https://your-hub.up.railway.app" /><p class="hint" id="s-publicUrl-hint"></p></label>
         </div>
-        <datalist id="tz-list">
-          <option value="America/New_York"></option><option value="America/Chicago"></option><option value="America/Denver"></option><option value="America/Phoenix"></option>
-          <option value="America/Los_Angeles"></option><option value="America/Anchorage"></option><option value="Pacific/Honolulu"></option><option value="America/Toronto"></option>
-          <option value="America/Mexico_City"></option><option value="Europe/London"></option><option value="UTC"></option>
-        </datalist>
-        <label>Public web address (for the QR code)<input type="url" id="s-publicUrl" placeholder="https://your-hub.up.railway.app" /><p class="hint" id="s-publicUrl-hint"></p></label>
         <div class="field-row"><span></span><button type="submit" class="btn">Save settings</button></div>
-      </form>
-      <form id="labels-form" class="panel frost stack">
-        <h3>Spanish names for board values</h3>
-        <p class="hint">Values that come from boards (statuses, shifts, issue types…) are shown in English unless you translate them here. One per line, as <code>English = Español</code>.</p>
-        <textarea id="s-labels" rows="10" spellcheck="false"></textarea>
-        <div class="field-row"><span></span><button type="submit" class="btn">Save translations</button></div>
       </form>
     </section>
   </main>
 
-  <!-- Tile / quick link editor -->
+  <!-- Tile editor -->
   <dialog id="dlg-item">
     <form method="dialog" id="item-form">
       <div class="dlg-head"><h3 id="item-title">Add tile</h3><button type="button" class="btn btn--ghost btn--small" data-close>Close</button></div>
@@ -117,7 +126,7 @@
           <label>Description (English)<input type="text" id="i-description_en" maxlength="200" /></label>
           <label>Description (Spanish)<input type="text" id="i-description_es" maxlength="200" /></label>
         </div>
-        <label>Link<input type="text" id="i-url" placeholder="https://forms.monday.com/forms/…" inputmode="url" autocomplete="off" /><p class="hint" id="i-url-hint">Paste the form's share link (monday.com → form → Share → copy link), a board link, or any web address. Leave blank for "Coming soon".</p></label>
+        <label>Link<input type="text" id="i-url" placeholder="https://forms.monday.com/forms/…" inputmode="url" autocomplete="off" /><p class="hint" id="i-url-hint"></p></label>
         <div>
           <span class="hint">Open</span>
           <div class="choice-row">
@@ -131,8 +140,8 @@
             <div class="emoji-row" id="i-emoji"></div>
           </div>
           <div class="stack">
-            <label id="i-code-wrap">Corner label<input type="text" id="i-code" maxlength="6" placeholder="01" /></label>
-            <label class="check"><input type="checkbox" id="i-active" checked /> Show on the hub</label>
+            <label>Corner label<input type="text" id="i-code" maxlength="6" placeholder="01" /></label>
+            <label class="check"><input type="checkbox" id="i-active" checked /> Show on the kiosk</label>
           </div>
         </div>
         <p class="dlg-error" id="item-error" hidden></p>
@@ -140,101 +149,6 @@
       <div class="dlg-foot">
         <button type="button" class="btn btn--danger btn--small" id="item-delete" hidden>Delete</button>
         <div class="right"><button type="button" class="btn btn--ghost" data-close>Cancel</button><button type="submit" class="btn" id="item-save">Save</button></div>
-      </div>
-    </form>
-  </dialog>
-
-  <!-- Board panel editor -->
-  <dialog id="dlg-panel" class="wide">
-    <form method="dialog" id="panel-form">
-      <div class="dlg-head"><h3 id="panel-title">Add board panel</h3><button type="button" class="btn btn--ghost btn--small" data-close>Close</button></div>
-      <div class="dlg-body">
-        <fieldset>
-          <legend>Board</legend>
-          <div class="field-row">
-            <label>monday.com board link or ID<input type="text" id="p-board" placeholder="https://yourteam.monday.com/boards/1234567890" autocomplete="off" /></label>
-            <button type="button" class="btn btn--ghost" id="p-load">Load board</button>
-            <button type="button" class="btn btn--ghost" id="p-pick">Choose…</button>
-          </div>
-          <select id="p-board-list" hidden></select>
-          <div id="p-board-box" class="board-box" hidden></div>
-          <p class="hint" id="p-board-hint">Load the board first: its columns are needed for the options below.</p>
-        </fieldset>
-
-        <div class="grid-2">
-          <label>Title (English)<input type="text" id="p-title_en" maxlength="80" required /></label>
-          <label>Title (Spanish)<input type="text" id="p-title_es" maxlength="80" /></label>
-          <label>Subtitle (English)<input type="text" id="p-subtitle_en" maxlength="200" /></label>
-          <label>Subtitle (Spanish)<input type="text" id="p-subtitle_es" maxlength="200" /></label>
-        </div>
-
-        <fieldset id="p-cols-set">
-          <legend>What each row shows</legend>
-          <div class="grid-2">
-            <label>Row title<select id="p-titleColumn"></select></label>
-            <div><span class="hint">Details under the title (up to 6)</span><div class="chips" id="p-columns"></div></div>
-          </div>
-        </fieldset>
-
-        <fieldset>
-          <legend>Only show items where…</legend>
-          <div class="filters" id="p-filters"></div>
-          <div class="field-row"><span></span><button type="button" class="btn btn--ghost btn--small" id="p-add-filter">+ Add condition</button></div>
-          <p class="hint">All conditions must be true. Status values are matched by label; dates use the hub's time zone.</p>
-        </fieldset>
-
-        <fieldset>
-          <legend>Highlight rows (optional)</legend>
-          <p class="hint">Mark a row in red when any of these columns has one of these values — e.g. Priority is "Critical", or any inspection item is "FAIL". The matching column names are shown on the row.</p>
-          <div><span class="hint">Columns to watch</span><div class="chips" id="p-hl-columns"></div></div>
-          <label>Values (comma-separated)<input type="text" id="p-hl-values" placeholder="Critical ⚠️, FAIL" /></label>
-          <div class="chips" id="p-hl-suggest"></div>
-          <div class="grid-2">
-            <label>Label (English)<input type="text" id="p-hl-label_en" maxlength="80" placeholder="Needs attention" /></label>
-            <label>Label (Spanish)<input type="text" id="p-hl-label_es" maxlength="80" /></label>
-          </div>
-        </fieldset>
-
-        <div class="grid-3">
-          <label>Order<select id="p-sort"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="board">Board order</option></select></label>
-          <label>Items to show<input type="number" id="p-limit" min="1" max="50" value="10" /></label>
-          <label>"Open board" link (optional)<input type="text" id="p-linkUrl" placeholder="https://yourteam.monday.com/boards/…" /></label>
-          <label>When empty, say (English)<input type="text" id="p-emptyText_en" maxlength="120" placeholder="Nothing to show right now." /></label>
-          <label>When empty, say (Spanish)<input type="text" id="p-emptyText_es" maxlength="120" /></label>
-          <div>
-            <label>Icon<input type="text" id="p-icon" maxlength="40" placeholder="📊" /></label>
-          </div>
-        </div>
-        <div class="emoji-row" id="p-emoji"></div>
-        <div class="grid-2">
-          <label class="check"><input type="checkbox" id="p-showTime" checked /> Show the time each item was created</label>
-          <label class="check"><input type="checkbox" id="p-active" checked /> Show on the hub</label>
-        </div>
-
-        <div>
-          <div class="field-row"><span class="hint">Check the result before saving.</span><button type="button" class="btn btn--ghost" id="p-preview">Preview</button></div>
-          <div id="p-preview-out" class="preview" hidden></div>
-        </div>
-        <p class="dlg-error" id="panel-error" hidden></p>
-      </div>
-      <div class="dlg-foot">
-        <button type="button" class="btn btn--danger btn--small" id="panel-delete" hidden>Delete</button>
-        <div class="right"><button type="button" class="btn btn--ghost" data-close>Cancel</button><button type="submit" class="btn" id="panel-save">Save panel</button></div>
-      </div>
-    </form>
-  </dialog>
-
-  <!-- New panel: start from a template -->
-  <dialog id="dlg-template">
-    <form method="dialog">
-      <div class="dlg-head"><h3>New board panel</h3><button type="button" class="btn btn--ghost btn--small" data-close>Close</button></div>
-      <div class="dlg-body">
-        <p class="hint">Start from an example or a blank panel. You'll pick the board and columns next.</p>
-        <ul class="items">
-          <li><span class="ico">⚠️</span><div class="main"><strong>Out of service</strong><span>Items on a "Forklift down" board whose status is still open, with critical ones in red.</span></div><div class="actions"><button type="button" class="btn btn--ghost btn--small" data-template="oos">Use</button></div></li>
-          <li><span class="ico">✅</span><div class="main"><strong>Today's submissions</strong><span>Everything added to a board today — e.g. daily checklists, with failed items in red.</span></div><div class="actions"><button type="button" class="btn btn--ghost btn--small" data-template="today">Use</button></div></li>
-          <li><span class="ico">📊</span><div class="main"><strong>Blank panel</strong><span>Choose everything yourself.</span></div><div class="actions"><button type="button" class="btn btn--ghost btn--small" data-template="blank">Use</button></div></li>
-        </ul>
       </div>
     </form>
   </dialog>

@@ -1,17 +1,16 @@
-/* Shows one tile or quick link inside the hub (iframe), then returns home after a while so the kiosk resets. */
+/* Shows one tile's form inside the hub (iframe), then returns home after a while so the kiosk resets. */
 (function () {
   "use strict";
   var H = window.Hub;
   var $ = function (id) { return document.getElementById(id); };
-  var m = /^\/open\/(t|l)\/([^/]+)$/.exec(location.pathname);
-  var kind = m ? m[1] : "t";
-  var id = m ? decodeURIComponent(m[2]) : "";
+  var m = /^\/open\/t\/([^/]+)$/.exec(location.pathname);
+  var id = m ? decodeURIComponent(m[1]) : "";
   var WARN_SECONDS = 30;
 
   H.fetchJson("/api/hub").then(function (hub) {
     H.resolveLang(hub.settings);
-    var list = kind === "l" ? hub.links : hub.tiles;
-    var item = list.filter(function (x) { return x.id === id; })[0];
+    H.applyAppearance(hub.appearance);
+    var item = hub.tiles.filter(function (x) { return x.id === id; })[0];
     document.title = H.pick(hub.settings.hubName) || "Employee Hub";
     $("back-label").textContent = H.t("backToHub");
     if (!item) return showMessage(H.t("notFound"));

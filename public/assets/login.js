@@ -16,4 +16,17 @@
     n.textContent = "You've been signed out.";
     n.hidden = false;
   }
+  fetch("/api/hub").then(function (r) { return r.json(); }).then(function (hub) {
+    var name = (hub.settings && hub.settings.hubName && hub.settings.hubName.en) || "Employee Hub";
+    document.getElementById("login-title").textContent = name + " admin";
+    document.title = "Admin sign in · " + name;
+    if (hub.logo) {
+      var img = document.createElement("img");
+      img.className = "brand-logo";
+      img.alt = "";
+      img.src = "/logo?v=" + encodeURIComponent(hub.logo);
+      var box = document.getElementById("login-logo");
+      box.replaceWith(img);
+    }
+  }).catch(function () {});
 })();

@@ -14,31 +14,26 @@
   <div class="glow spectrum" aria-hidden="true"></div>
   <header class="topbar">
     <div class="topbar-inner">
-      <a class="brand" href="/kiosk"><span class="pill spectrum" aria-hidden="true"></span><span id="brand-name">Employee Hub</span></a>
+      <a class="brand" id="brand" href="/kiosk"><span class="pill spectrum" aria-hidden="true"></span><span class="brand-name">Employee Hub</span></a>
       <div class="topbar-right">
         <div id="lang-toggle" class="lang-toggle" role="group" hidden></div>
         <a id="mini-qr" class="mini-qr" href="/qr" hidden><img src="/qr.svg" alt="" /><span id="mini-qr-label"></span></a>
       </div>
     </div>
   </header>
-  <main class="home">
-    <div class="home-left">
-      <section class="greeting">
+  <main>
+    <section class="hero">
+      <div class="greeting">
         <p id="date" class="date">&nbsp;</p>
         <h1 id="greeting">&nbsp;</h1>
         <p id="intro" class="intro"></p>
-      </section>
-      <section id="tiles" class="tiles" aria-label="Tools"></section>
-    </div>
-    <div class="home-right">
-      <section id="links-block" hidden>
-        <div class="block-head">
-          <div><h2 id="links-title"></h2><p id="links-sub"></p></div>
-        </div>
-        <ul id="links" class="links-grid"></ul>
-      </section>
-      <div id="panels"></div>
-    </div>
+      </div>
+      <aside id="note" class="note frost" hidden>
+        <span id="note-icon" class="note-icon" aria-hidden="true"></span>
+        <div><strong id="note-title"></strong><p id="note-body"></p></div>
+      </aside>
+    </section>
+    <section id="tiles" class="tiles" aria-label="Tools"></section>
   </main>
   <footer class="kiosk-foot"><a href="/admin" id="admin-link">Admin</a></footer>
   <script src="/assets/common.js"></script>
