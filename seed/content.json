@@ -52,7 +52,12 @@
     "tileColumns": "auto",
     "showCodes": true,
     "showDate": true,
-    "showIntro": true
+    "hubNamePosition": "topbar",
+    "greetingStyle": "after",
+    "introPosition": "below",
+    "headerAlign": "left",
+    "clock": "12h",
+    "clockAmPm": false
   },
   "logo": "",
   "tiles": [

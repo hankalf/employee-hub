@@ -85,7 +85,39 @@
         <div class="grid-3">
           <label class="check"><input type="checkbox" id="a-showCodes" /> Show the corner labels (01, 02…)</label>
           <label class="check"><input type="checkbox" id="a-showDate" /> Show today's date</label>
-          <label class="check"><input type="checkbox" id="a-showIntro" /> Show the intro line</label>
+        </div>
+        <h4 class="sub">Layout</h4>
+        <div class="grid-2">
+          <label>Hub name<select id="a-hubNamePosition">
+            <option value="topbar">In the top bar, next to the logo</option>
+            <option value="headline">Large, above the greeting</option>
+            <option value="hidden">Hidden</option>
+          </select><p class="hint">With the greeting turned off, "Large, above the greeting" makes the hub name the main heading.</p></label>
+          <label>Greeting and greeting word<select id="a-greetingStyle">
+            <option value="after">Good morning, team.</option>
+            <option value="before">Team, good morning.</option>
+            <option value="noword">Good morning. (no greeting word)</option>
+            <option value="hidden">No greeting</option>
+          </select><p class="hint">The greeting word ("team") is set under Settings → Hub.</p></label>
+          <label>Intro line<select id="a-introPosition">
+            <option value="below">Below the greeting</option>
+            <option value="above">Above the greeting</option>
+            <option value="bottom">Under the tiles</option>
+            <option value="hidden">Hidden</option>
+          </select></label>
+          <label>Alignment<select id="a-headerAlign">
+            <option value="left">Left, with notes on the right</option>
+            <option value="center">Centred, with notes underneath</option>
+          </select></label>
+        </div>
+        <h4 class="sub">Top bar clock</h4>
+        <div class="grid-2">
+          <label>Clock in the middle of the top bar<select id="a-clock">
+            <option value="12h">12-hour (07:44)</option>
+            <option value="24h">24-hour (19:44)</option>
+            <option value="off">Off</option>
+          </select><p class="hint">Uses each kiosk's own clock and time zone. The screensaver clock follows the same 12/24-hour choice.</p></label>
+          <label class="check"><input type="checkbox" id="a-clockAmPm" /> Show AM / PM (12-hour only)</label>
         </div>
         <div class="field-row"><span class="hint">The preview below updates after you save.</span><button type="submit" class="btn">Save appearance</button></div>
         <div class="preview-frame"><iframe id="preview" src="/kiosk" title="Kiosk preview" loading="lazy"></iframe></div>

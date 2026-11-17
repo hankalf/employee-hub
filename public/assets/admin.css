@@ -147,4 +147,5 @@ input[type="time"] { width: 100%; min-height: 2.75rem; padding: .5rem .85rem; bo
 .seg button { min-height: 2rem; padding: 0 .85rem; border: 0; border-radius: 999px; background: transparent; font-size: .8rem; font-weight: 500; color: var(--muted-fg); }
 .seg button[aria-pressed="true"] { background: var(--card); color: var(--fg); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
 textarea#i-url { min-height: 2.75rem; resize: vertical; font-size: .9rem; word-break: break-all; }
+.panel h4.sub { margin: .5rem 0 0; font-size: .8rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted-fg); }
 .items .actions button:disabled { opacity: .3; cursor: default; background: transparent; }

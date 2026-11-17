@@ -15,6 +15,7 @@
   <header class="topbar">
     <div class="topbar-inner">
       <a class="brand" id="brand" href="/kiosk"><span class="pill spectrum" aria-hidden="true"></span><span class="brand-name">Employee Hub</span></a>
+      <div id="top-clock" class="top-clock" role="timer" aria-live="off" hidden></div>
       <div class="topbar-right">
         <div id="lang-toggle" class="lang-toggle" role="group" hidden></div>
         <a id="mini-qr" class="mini-qr" href="/qr" hidden><img src="/qr.svg" alt="" /><span id="mini-qr-label"></span></a>
@@ -22,8 +23,9 @@
     </div>
   </header>
   <main>
-    <section class="hero">
-      <div class="greeting">
+    <section class="hero" id="hero">
+      <div class="greeting" id="greeting-block">
+        <p id="hero-name" class="hero-name" hidden></p>
         <p id="date" class="date">&nbsp;</p>
         <h1 id="greeting">&nbsp;</h1>
         <p id="intro" class="intro"></p>
@@ -31,6 +33,7 @@
       <div id="notes" class="notes" hidden></div>
     </section>
     <div id="tiles" aria-label="Tools"></div>
+    <div id="intro-bottom-slot" class="intro-bottom-slot"></div>
   </main>
   <footer class="kiosk-foot"><a href="/admin" id="admin-link">Admin</a></footer>
 

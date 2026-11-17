@@ -178,6 +178,14 @@ test("appearance is saved and shown to the kiosk", async () => {
   assert.equal(hub.appearance.tileColumns, "3");
   assert.equal(hub.appearance.showCodes, false);
   assert.equal(hub.appearance.cardStyle, "frosted"); // untouched fields keep their defaults
+  assert.equal(hub.appearance.clock, "12h");
+  r = await c.put("/api/admin/appearance", { json: { hubNamePosition: "headline", greetingStyle: "hidden", introPosition: "bottom", headerAlign: "center", clock: "24h" } });
+  assert.equal(r.status, 200);
+  const hub2 = await (await fetch(base + "/api/hub")).json();
+  assert.equal(hub2.appearance.hubNamePosition, "headline");
+  assert.equal(hub2.appearance.clock, "24h");
+  assert.equal((await c.put("/api/admin/appearance", { json: { introPosition: "nowhere" } })).status, 400);
+  await c.put("/api/admin/appearance", { json: { hubNamePosition: "topbar", greetingStyle: "after", introPosition: "below", headerAlign: "left", clock: "12h" } });
 });
 
 test("groups: tiles can be grouped, groups reordered and deleted", async () => {

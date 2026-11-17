@@ -195,3 +195,30 @@ test("monday embed code is accepted and the form address taken out of it", () =>
   assert.throws(() => normalizeUrl("<div>no form here</div>"), /embed code/);
   assert.throws(() => normalizeUrl('<iframe src="javascript:alert(1)"></iframe>'), /http/);
 });
+
+test("layout and clock settings validate, and the old intro switch is upgraded", () => {
+  const a = validateAppearance({ hubNamePosition: "headline", greetingStyle: "before", introPosition: "bottom", headerAlign: "center", clock: "24h", clockAmPm: true }, DEFAULT_APPEARANCE);
+  assert.equal(a.hubNamePosition, "headline");
+  assert.equal(a.greetingStyle, "before");
+  assert.equal(a.introPosition, "bottom");
+  assert.equal(a.headerAlign, "center");
+  assert.equal(a.clock, "24h");
+  assert.equal(a.clockAmPm, true);
+  assert.equal(DEFAULT_APPEARANCE.clock, "12h");
+  assert.equal(DEFAULT_APPEARANCE.hubNamePosition, "topbar");
+  assert.throws(() => validateAppearance({ hubNamePosition: "footer" }, a), /Hub name position/);
+  assert.throws(() => validateAppearance({ greetingStyle: "loud" }, a), /Greeting/);
+  assert.throws(() => validateAppearance({ introPosition: "sideways" }, a), /Intro line/);
+  assert.throws(() => validateAppearance({ headerAlign: "right" }, a), /alignment/);
+  assert.throws(() => validateAppearance({ clock: "analog" }, a), /Clock/);
+  // An older admin page sending showIntro: false still hides the intro line
+  assert.equal(validateAppearance({ showIntro: false }, DEFAULT_APPEARANCE).introPosition, "hidden");
+  assert.equal(validateAppearance({ showIntro: false }, DEFAULT_APPEARANCE).showIntro, undefined);
+  // Saved content from before: showIntro false becomes introPosition hidden; true keeps the default
+  assert.equal(normalizeContent({ tiles: [], appearance: { showIntro: false } }).appearance.introPosition, "hidden");
+  const upgraded = normalizeContent({ tiles: [], appearance: { showIntro: true, theme: "dark" } }).appearance;
+  assert.equal(upgraded.introPosition, "below");
+  assert.equal(upgraded.theme, "dark");
+  assert.equal(upgraded.clock, "12h");
+  assert.equal(upgraded.showIntro, undefined);
+});

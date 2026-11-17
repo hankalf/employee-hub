@@ -12,7 +12,7 @@ What's included:
 - **Tap counts** per tile for the last 7 and 30 days.
 - **Kiosk status**: every tablet checks in once a minute and the admin shows which are online.
 - **Backup and restore** of everything as a single zip.
-- Your **logo** and **appearance** choices (theme, colours, card style, corners, font, tile size and columns).
+- Your **logo** and **appearance** choices (theme, colours, card style, corners, font, tile size and columns), where the **hub name, greeting and intro line** sit, and a **clock** in the middle of the top bar.
 
 - **Kiosk** (`/kiosk`): greeting, notes, and the tiles across the full width. Picks up admin changes within a minute, so it never needs reloading. The root address `/` redirects here, so the short address on the QR code works.
 - **Form page** (`/open/t/…`): a tile's form inside the hub with a "Back to hub" button. After a period with no taps it returns home.
@@ -89,7 +89,20 @@ Every device showing the kiosk checks in once a minute. The admin header shows h
 
 *Admin → Settings → Logo*: upload a PNG, SVG, JPG, GIF or WebP (max 2 MB). It replaces the accent pill in the top bar of the kiosk, on the screensaver, on the QR page and in the admin area.
 
-*Admin → Settings → Appearance*: theme (follow the device, always light or always dark), spectrum or solid accent colour, optional background colour, card style (frosted, solid or outline), corner roundness, font, tile size, tiles per row, and whether to show the corner labels, the date and the intro line. A live preview of the kiosk sits under the form and updates when you save.
+*Admin → Settings → Appearance*: theme (follow the device, always light or always dark), spectrum or solid accent colour, optional background colour, card style (frosted, solid or outline), corner roundness, font, tile size, tiles per row, and whether to show the corner labels and the date. A live preview of the kiosk sits under the form and updates when you save.
+
+**Layout** (same section) decides where the header pieces go:
+
+| Setting | Choices |
+|---|---|
+| Hub name | In the top bar next to the logo · Large, above the greeting · Hidden |
+| Greeting and greeting word | "Good morning, team." · "Team, good morning." · "Good morning." · No greeting |
+| Intro line | Below the greeting · Above the greeting · Under the tiles · Hidden |
+| Alignment | Left, with notes on the right · Centred, with notes underneath |
+
+With *No greeting* and the hub name *Large, above the greeting*, the hub name becomes the main heading.
+
+**Top bar clock**: a digital clock in the middle of the top bar, 12-hour (`07:44`) or 24-hour (`19:44`), with AM/PM optional, or off. It uses each kiosk's own clock, and the screensaver clock follows the same 12/24-hour choice. On phones the clock moves next to the logo and the "Open on your phone" QR is hidden.
 
 ### Backup and restore
 

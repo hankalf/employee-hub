@@ -508,7 +508,7 @@
   });
 
   // --- appearance --------------------------------------------------------------
-  var A_SELECTS = ["theme", "accentStyle", "cardStyle", "radius", "font", "tileSize", "tileColumns"];
+  var A_SELECTS = ["theme", "accentStyle", "cardStyle", "radius", "font", "tileSize", "tileColumns", "hubNamePosition", "greetingStyle", "introPosition", "headerAlign", "clock"];
   function syncColour(textId, pickerId) {
     var text = $(textId), picker = $(pickerId);
     picker.addEventListener("input", function () { text.value = picker.value; });
@@ -517,19 +517,23 @@
   syncColour("a-accent", "a-accent-picker");
   syncColour("a-background", "a-background-picker");
   $("a-background-clear").addEventListener("click", function () { $("a-background").value = ""; });
+  $("a-clock").addEventListener("change", function () { $("a-clockAmPm").disabled = this.value !== "12h"; });
   function renderAppearance() {
     var a = content.appearance;
     A_SELECTS.forEach(function (k) { $("a-" + k).value = a[k]; });
     $("a-accent").value = a.accent; $("a-accent-picker").value = a.accent;
     $("a-background").value = a.background || ""; $("a-background-picker").value = a.background || "#f8f8f8";
-    $("a-showCodes").checked = a.showCodes !== false; $("a-showDate").checked = a.showDate !== false; $("a-showIntro").checked = a.showIntro !== false;
+    $("a-showCodes").checked = a.showCodes !== false; $("a-showDate").checked = a.showDate !== false;
+    $("a-clockAmPm").checked = Boolean(a.clockAmPm);
+    $("a-clockAmPm").disabled = a.clock !== "12h";
   }
   $("appearance-form").addEventListener("submit", function (ev) {
     ev.preventDefault();
     var body = {};
     A_SELECTS.forEach(function (k) { body[k] = $("a-" + k).value; });
     body.accent = $("a-accent").value.trim(); body.background = $("a-background").value.trim();
-    body.showCodes = $("a-showCodes").checked; body.showDate = $("a-showDate").checked; body.showIntro = $("a-showIntro").checked;
+    body.showCodes = $("a-showCodes").checked; body.showDate = $("a-showDate").checked;
+    body.clockAmPm = $("a-clockAmPm").checked;
     api("PUT", "/api/admin/appearance", body).then(function () { toast("Appearance saved"); return reload(); }).catch(fail);
   });
 

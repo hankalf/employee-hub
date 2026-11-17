@@ -186,10 +186,18 @@
     fetch("/api/tap/" + encodeURIComponent(id), { method: "POST", keepalive: true }).catch(function () {});
   }
 
+  /** "07:44" (12-hour, as XX:XX), "19:44" (24-hour), optionally with AM/PM. Returns { hm, ampm }. */
+  function clockParts(date, mode, withAmPm) {
+    var h = date.getHours(), m = String(date.getMinutes()).padStart(2, "0");
+    if (mode === "24h") return { hm: String(h).padStart(2, "0") + ":" + m, ampm: "" };
+    var h12 = h % 12 || 12;
+    return { hm: String(h12).padStart(2, "0") + ":" + m, ampm: withAmPm ? (h < 12 ? "AM" : "PM") : "" };
+  }
+
   /** Is the hub itself being shown inside another site's frame (e.g. a monday.com board view)? */
   var framed = (function () { try { return window.self !== window.top; } catch (e) { return true; } })();
 
-  window.Hub = { framed: framed, t: t, pick: pick, icon: icon, noteIcon: function (s) { return NOTE_ICONS[s] || NOTE_ICONS.info; }, lang: lang, setLang: setLang, resolveLang: resolveLang,
+  window.Hub = { framed: framed, clockParts: clockParts, t: t, pick: pick, icon: icon, noteIcon: function (s) { return NOTE_ICONS[s] || NOTE_ICONS.info; }, lang: lang, setLang: setLang, resolveLang: resolveLang,
     locale: locale, el: el, fetchJson: fetchJson, applyAppearance: applyAppearance, renderBrand: renderBrand, renderLangToggle: renderLangToggle, today: today,
     currentNotes: currentNotes, tileAvailable: tileAvailable, startHeartbeat: startHeartbeat, countTap: countTap };
 })();

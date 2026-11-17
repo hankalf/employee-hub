@@ -11,13 +11,69 @@
     return h < 12 ? H.t("morning") : h < 18 ? H.t("afternoon") : H.t("evening");
   }
 
+  /** The greeting line, with the greeting word after it, before it, or left out. */
+  function greetingText(style) {
+    var g = greetingWord();
+    var word = (H.pick(hub.settings.teamWord) || "").trim();
+    if (!word || style === "noword") return g + ".";
+    if (style === "before") return word.charAt(0).toUpperCase() + word.slice(1) + ", " + g.charAt(0).toLowerCase() + g.slice(1) + ".";
+    return g + ", " + word + ".";
+  }
+
+  var lastClock = "";
+  function renderTopClock() {
+    var a = hub.appearance, box = $("top-clock");
+    if (a.clock === "off") { box.hidden = true; return; }
+    var parts = H.clockParts(new Date(), a.clock, a.clockAmPm);
+    var key = parts.hm + parts.ampm;
+    box.hidden = false;
+    if (key === lastClock) return;
+    lastClock = key;
+    box.textContent = parts.hm;
+    if (parts.ampm) box.appendChild(H.el("small", { text: parts.ampm }));
+    box.setAttribute("aria-label", parts.hm + (parts.ampm ? " " + parts.ampm : ""));
+  }
+
   function renderClock() {
-    var now = new Date();
-    $("date").hidden = hub.appearance.showDate === false;
+    var now = new Date(), a = hub.appearance;
+    $("date").hidden = a.showDate === false;
     $("date").textContent = now.toLocaleDateString(H.locale(), { weekday: "long", month: "long", day: "numeric" });
-    $("greeting").textContent = greetingWord() + ", " + (H.pick(hub.settings.teamWord) || "team") + ".";
-    $("saver-clock").textContent = now.toLocaleTimeString(H.locale(), { hour: "numeric", minute: "2-digit" });
+    var h1 = $("greeting");
+    h1.hidden = a.greetingStyle === "hidden";
+    h1.textContent = greetingText(a.greetingStyle);
+    renderTopClock();
+    // The screensaver follows the top bar's 12/24-hour choice and always shows AM/PM in 12-hour mode.
+    var sp = H.clockParts(now, a.clock === "24h" ? "24h" : "12h", true);
+    $("saver-clock").textContent = sp.hm.replace(/^0(?=\d:)/, "") + (sp.ampm ? " " + sp.ampm : "");
     $("saver-date").textContent = now.toLocaleDateString(H.locale(), { weekday: "long", month: "long", day: "numeric" });
+  }
+
+  /** Put the hub name, greeting and intro line where the admin chose. */
+  function renderLayout() {
+    var a = hub.appearance, name = H.pick(hub.settings.hubName) || "Employee Hub";
+    // Hub name: in the top bar, as a heading above the greeting (big when there's no greeting), or hidden.
+    var brandName = $("brand").querySelector(".brand-name");
+    if (brandName) brandName.hidden = a.hubNamePosition !== "topbar";
+    var heroName = $("hero-name"), date = $("date");
+    var nameIsHeading = a.hubNamePosition === "headline" && a.greetingStyle === "hidden";
+    heroName.hidden = a.hubNamePosition !== "headline";
+    heroName.textContent = name;
+    heroName.className = "hero-name" + (nameIsHeading ? " hero-name--big" : "");
+    // The date sits above the main heading: above the hub name when that is the heading, else under it.
+    if (nameIsHeading) $("greeting-block").insertBefore(date, heroName);
+    else $("greeting-block").insertBefore(date, $("greeting").previousElementSibling === $("intro") ? $("intro") : $("greeting"));
+    // Intro line: below or above the greeting, under the tiles, or hidden.
+    var intro = $("intro"), block = $("greeting-block"), bottom = $("intro-bottom-slot");
+    intro.textContent = H.pick(hub.settings.intro);
+    intro.hidden = a.introPosition === "hidden" || !intro.textContent;
+    intro.className = "intro" + (a.introPosition === "above" ? " intro--above" : "");
+    if (a.introPosition === "bottom") bottom.appendChild(intro);
+    else if (a.introPosition === "above") block.insertBefore(intro, $("greeting"));
+    else block.appendChild(intro);
+    // Alignment of the whole header block.
+    var center = a.headerAlign === "center";
+    $("hero").classList.toggle("hero--center", center);
+    bottom.classList.toggle("center", center);
   }
 
   function renderHeader() {
@@ -78,9 +134,6 @@
   function renderTiles() {
     var box = $("tiles");
     box.innerHTML = "";
-    var intro = $("intro");
-    intro.textContent = H.pick(hub.settings.intro);
-    intro.hidden = hub.appearance.showIntro === false || !intro.textContent;
     var visible = hub.tiles.filter(H.tileAvailable);
     if (!visible.length) {
       box.appendChild(H.el("div", { class: "empty frost" }, [H.el("strong", { text: H.t("noTools") }), H.t("noToolsAdmin")]));
@@ -186,6 +239,7 @@
     H.resolveLang(hub.settings);
     H.applyAppearance(hub.appearance);
     renderHeader();
+    renderLayout();
     renderClock();
     renderNotes();
     renderTiles();
@@ -207,5 +261,6 @@
   H.startHeartbeat();
   setInterval(function () { if (hub) { renderClock(); renderNotes(); renderTiles(); } }, 60000); // schedules and note dates tick over
   setInterval(function () { if (hub) renderClock(); }, 10000);
+  setInterval(function () { if (hub) renderTopClock(); }, 1000); // the top bar clock turns over on the minute
   setInterval(function () { loadHub().catch(function () {}); }, 60000); // picks up admin changes without a reload
 })();
