@@ -14,7 +14,6 @@
     $("title").textContent = H.pick(hub.settings.hubName) || H.t("qrTitle");
     document.title = H.t("qrTitle");
     $("qr").alt = H.t("qrAlt");
-    $("url").textContent = hub.publicUrl || "";
     $("back").textContent = "← " + H.t("backToHub");
     $("print").textContent = "🖨 " + H.t("qrPrint");
   }

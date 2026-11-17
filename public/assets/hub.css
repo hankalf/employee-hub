@@ -204,8 +204,7 @@ body.open-page { height: 100vh; height: 100dvh; display: flex; flex-direction: c
 .qr-card-wrap .glow2 { position: absolute; inset: 1rem; border-radius: 40px; opacity: .4; filter: blur(30px); }
 .qr-card { position: relative; padding: 2rem; border-radius: var(--radius); }
 .qr-card img { display: block; width: 100%; aspect-ratio: 1; border-radius: 10px; background: #fff; }
-.qr-url { margin-top: 1.5rem; max-width: 24rem; font-size: .75rem; color: var(--muted-fg); word-break: break-all; }
-.qr-page .actions { display: flex; gap: .75rem; margin-top: 1.5rem; }
+.qr-page .actions { display: flex; gap: .75rem; margin-top: 2rem; }
 @media print {
   .topbar, .actions, .glow, .glow2 { display: none !important; }
   body { background: #fff; color: #000; }
