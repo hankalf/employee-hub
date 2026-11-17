@@ -35,11 +35,20 @@
   function show(hub, item) {
     if (!item.url) return showMessage(H.t("linkMissing"));
     // The server found that this page refuses to be shown inside another site: open it on its own.
-    if (item.fullPage) { location.replace(item.url); return; }
+    if (item.fullPage) {
+      if (!H.framed) { location.replace(item.url); return; }
+      // Inside a monday.com frame: offer a new tab instead (browsers block opening one without a tap).
+      var msg = $("frame-msg");
+      msg.innerHTML = "";
+      msg.appendChild(H.el("a", { class: "btn", href: item.url, target: "_blank", rel: "noopener", text: H.t("openNewTab") + " ↗" }));
+      msg.hidden = false;
+      return;
+    }
 
     var newtab = $("newtab");
     newtab.href = item.url;
-    newtab.textContent = H.t("openFull") + " ↗";
+    newtab.textContent = (H.framed ? H.t("openNewTab") : H.t("openFull")) + " ↗";
+    if (H.framed) { newtab.target = "_blank"; newtab.rel = "noopener"; }
     newtab.hidden = false;
 
     var frame = $("frame");

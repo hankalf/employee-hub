@@ -69,7 +69,8 @@ test("health check and kiosk pages are public", async () => {
     assert.equal(r.status, 200, p);
     assert.match(r.headers.get("content-type"), /text\/html/);
     assert.match(r.headers.get("content-security-policy"), /frame-src 'self' https:/);
-    assert.equal(r.headers.get("x-frame-options"), "SAMEORIGIN");
+    assert.match(r.headers.get("content-security-policy"), /frame-ancestors 'self' https:\/\/monday\.com https:\/\/\*\.monday\.com https:\/\/\*\.monday\.app(;|$)/);
+    assert.equal(r.headers.get("x-frame-options"), null, "X-Frame-Options would stop monday.com from framing the hub");
   }
   const svg = await fetch(base + "/qr.svg");
   assert.equal(svg.status, 200);
@@ -444,6 +445,47 @@ test("settings save and drive the QR address", async () => {
   const hub = await (await fetch(base + "/api/hub")).json();
   assert.equal(hub.settings.hubName.en, "NT Hub");
   await c.put("/api/admin/settings", { json: { languages: ["en", "es"], publicUrl: "" } });
+});
+
+test("the admin cookie works inside a monday.com frame over HTTPS", async () => {
+  const login = (proto) => fetch(base + "/admin/login", {
+    method: "POST", redirect: "manual",
+    headers: { "Content-Type": "application/x-www-form-urlencoded", "X-Forwarded-Proto": proto },
+    body: new URLSearchParams({ password: ADMIN_PASSWORD }).toString(),
+  });
+  const https = (await login("https")).headers.get("set-cookie");
+  assert.match(https, /hub_admin=/);
+  assert.match(https, /SameSite=None/);
+  assert.match(https, /Secure/);
+  assert.match(https, /Partitioned/);
+  assert.match(https, /HttpOnly/);
+  const http = (await login("http")).headers.get("set-cookie");
+  assert.match(http, /SameSite=Lax/);
+  assert.doesNotMatch(http, /Partitioned|Secure/);
+  // Cross-site writes are still refused without the custom header, even with the cookie
+  const cookie = /hub_admin=[^;]*/.exec(https)[0];
+  const r = await fetch(base + "/api/admin/tiles", { method: "POST", headers: { Cookie: cookie, "Content-Type": "application/json" }, body: "{}" });
+  assert.equal(r.status, 403);
+});
+
+test("FRAME_ANCESTORS can change or turn off framing", async () => {
+  const start = async (frameAncestors) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hub-test-fa-"));
+    const origWarn = console.warn; console.warn = () => {};
+    const { app } = await createApp({ dataDir: dir, adminPassword: "x", sessionSecret: "", publicUrl: "", frameAncestors, fetchImpl: fakeWeb().fetchImpl, backgroundChecks: false });
+    console.warn = origWarn;
+    const srv = await new Promise((resolve) => { const s = app.listen(0, () => resolve(s)); });
+    const r = await fetch(`http://127.0.0.1:${srv.address().port}/kiosk`);
+    srv.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+    return r.headers;
+  };
+  let h = await start("https://intranet.example.org, https://*.monday.com http://insecure.example");
+  assert.match(h.get("content-security-policy"), /frame-ancestors 'self' https:\/\/intranet\.example\.org https:\/\/\*\.monday\.com;/);
+  assert.equal(h.get("x-frame-options"), null);
+  h = await start("none");
+  assert.match(h.get("content-security-policy"), /frame-ancestors 'self';/);
+  assert.equal(h.get("x-frame-options"), "SAMEORIGIN");
 });
 
 test("bad JSON and a server without ADMIN_PASSWORD are handled", async () => {

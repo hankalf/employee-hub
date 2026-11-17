@@ -56,8 +56,10 @@
 
   function tileEl(t) {
     var href = tileHref(t);
+    // Inside a monday.com frame, a form that can't be framed must open in a new tab: replacing our frame wouldn't help.
+    var newTab = href && !t.locked && (t.open === "tab" || (t.fullPage && H.framed));
     var a = H.el(href ? "a" : "div", { class: "tile frost" + (href ? "" : " tile--off") + (t.locked ? " tile--locked" : ""), href: href || null,
-      target: href && !t.locked && t.open === "tab" ? "_blank" : null, rel: href && t.open === "tab" ? "noopener" : null, "aria-disabled": href ? null : "true" });
+      target: newTab ? "_blank" : null, rel: newTab ? "noopener" : null, "aria-disabled": href ? null : "true" });
     var corner = !href ? H.el("span", { class: "badge", text: H.t("comingSoon") })
       : t.locked ? H.el("span", { class: "badge", text: "🔒 " + H.t("leadsOnly") })
         : hub.appearance.showCodes !== false ? H.el("span", { class: "tile-code", text: t.code || "" }) : null;

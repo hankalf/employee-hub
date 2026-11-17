@@ -34,6 +34,7 @@ Built with Node.js and Express. No database: settings and the logo live on a Rai
    | `ADMIN_PASSWORD` | ✅ | Password for the admin area at `/admin`. Changing it signs every admin out. |
    | `SESSION_SECRET` | optional | Random string used to sign the admin login cookie. Generated and kept on the Volume if empty. |
    | `PUBLIC_URL` | optional | The hub's public address, used for the QR code. Defaults to the address the page is opened on; you can also set it in *Settings*. |
+   | `FRAME_ANCESTORS` | optional | Sites allowed to show the hub inside a frame. Default: `https://monday.com https://*.monday.com https://*.monday.app`. Space- or comma-separated https addresses; `none` means only the hub itself. |
 
 4. **Get a web address.** Service → *Settings → Networking → Generate Domain*, or add your own domain.
 5. Open `https://<your-domain>/admin`, sign in, and paste your form links into the tiles. The kiosk itself is at `https://<your-domain>/kiosk`.
@@ -98,6 +99,12 @@ Every device showing the kiosk checks in once a minute. The admin header shows h
 
 Every title and description has an English and a Spanish box; Spanish falls back to English when empty. The kiosk shows an EN / ES switch, which you can turn off in *Settings* for English only.
 
+### Showing the hub inside monday.com
+
+The hub can be shown inside monday.com, for example as an embedded website view on a board, a dashboard widget, or inside a monday app hosted on `*.monday.app`. Use the kiosk address, `https://<your-domain>/kiosk`. By default, framing is allowed from `monday.com`, any `*.monday.com` address and any `*.monday.app` address; change the list with the `FRAME_ANCESTORS` variable.
+
+Inside a monday frame, forms still open inside the hub. A form that refuses to be framed opens in a new browser tab instead. The admin area also works inside the frame, but browsers that block third-party cookies (Safari, or Chrome with that setting on) won't keep you signed in there: open `https://<your-domain>/admin` in its own tab instead.
+
 ### iPad kiosk tips
 
 - Open `https://<your-domain>/kiosk` in Safari and *Add to Home Screen*; launching it from there hides the browser bars.
@@ -153,4 +160,5 @@ test/                     Automated tests (node --test)
 - The admin cookie is HttpOnly and signed. Every change made through the API requires a custom header, which blocks cross-site request forgery.
 - Tile PINs are stored hashed (scrypt). A locked tile's link is only sent after the right PIN, as a 15-minute signed token. This keeps casual users out; it is not a substitute for monday.com's own permissions on sensitive forms.
 - The logo is served with a sandboxing Content-Security-Policy, and only image types are accepted. A restore only extracts the logo its content refers to.
-- Pages send a Content-Security-Policy that allows only https pages to be embedded, and the hub can only be framed by itself (for the admin preview).
+- Pages send a Content-Security-Policy that allows only https pages to be embedded in the hub, and lets only the hub itself and the sites in `FRAME_ANCESTORS` (monday.com and monday.app by default) show the hub in a frame.
+- Over HTTPS the admin cookie is `SameSite=None; Secure; Partitioned` so signing in works inside a monday.com frame; a frame's cookie is kept separate from the hub's own tab. Every change still needs the custom request header, so other sites can't make changes on an admin's behalf.

@@ -186,7 +186,10 @@
     fetch("/api/tap/" + encodeURIComponent(id), { method: "POST", keepalive: true }).catch(function () {});
   }
 
-  window.Hub = { t: t, pick: pick, icon: icon, noteIcon: function (s) { return NOTE_ICONS[s] || NOTE_ICONS.info; }, lang: lang, setLang: setLang, resolveLang: resolveLang,
+  /** Is the hub itself being shown inside another site's frame (e.g. a monday.com board view)? */
+  var framed = (function () { try { return window.self !== window.top; } catch (e) { return true; } })();
+
+  window.Hub = { framed: framed, t: t, pick: pick, icon: icon, noteIcon: function (s) { return NOTE_ICONS[s] || NOTE_ICONS.info; }, lang: lang, setLang: setLang, resolveLang: resolveLang,
     locale: locale, el: el, fetchJson: fetchJson, applyAppearance: applyAppearance, renderBrand: renderBrand, renderLangToggle: renderLangToggle, today: today,
     currentNotes: currentNotes, tileAvailable: tileAvailable, startHeartbeat: startHeartbeat, countTap: countTap };
 })();
