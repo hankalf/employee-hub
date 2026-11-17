@@ -18,13 +18,13 @@ if (process.env.RAILWAY_ENVIRONMENT && !process.env.RAILWAY_VOLUME_MOUNT_PATH &&
 }
 if (!config.adminPassword) console.warn("⚠️  ADMIN_PASSWORD is not set — the admin area is disabled until it is.");
 
-createApp(config).then(({ app }) => {
+createApp(config).then(({ app, ctx }) => {
   const server = app.listen(config.port, () => {
     console.log(`Employee Hub running on http://localhost:${config.port}`);
     console.log(`Data folder: ${config.dataDir}`);
   });
   const shutdown = () => {
-    server.close(() => process.exit(0));
+    Promise.all([ctx.stats.flush(), ctx.devices.flush()]).catch(() => {}).finally(() => server.close(() => process.exit(0)));
     setTimeout(() => process.exit(0), 5000).unref();
   };
   process.on("SIGTERM", shutdown);

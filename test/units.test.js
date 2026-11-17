@@ -5,7 +5,7 @@ const assert = require("node:assert/strict");
 const jsQR = require("jsqr");
 const { normalizeUrl, describeLink } = require("../lib/links");
 const { encodeQr, toSvg } = require("../lib/qr");
-const { validateTile, validateSettings, validateNote, validateAppearance, ValidationError, DEFAULT_APPEARANCE } = require("../lib/store");
+const { validateTile, validateSettings, validateNote, validateAppearance, validateSchedule, verifyTilePin, normalizeContent, ValidationError, DEFAULT_APPEARANCE } = require("../lib/store");
 
 test("normalizeUrl adds https and rejects non-web links", () => {
   assert.equal(normalizeUrl("forms.monday.com/forms/abc?r=use1"), "https://forms.monday.com/forms/abc?r=use1");
@@ -70,16 +70,64 @@ test("settings validate languages and idle time", () => {
   assert.throws(() => validateSettings({ hubName: "" }, base), /Hub name/);
 });
 
-test("the kiosk note validates", () => {
-  const n = validateNote({ active: true, style: "important", title: "Safety meeting", body: { en: "Friday 2pm", es: "Viernes 2pm" }, until: "2026-12-31" });
+test("notes validate text and dates", () => {
+  const n = validateNote({ active: true, style: "important", title: "Safety meeting", body: { en: "Friday 2pm", es: "Viernes 2pm" }, from: "2026-12-01", until: "2026-12-31" });
   assert.equal(n.active, true);
   assert.equal(n.style, "important");
   assert.equal(n.body.es, "Viernes 2pm");
-  assert.equal(n.until, "2026-12-31");
-  assert.deepEqual(validateNote(null), { active: false, style: "info", title: { en: "", es: "" }, body: { en: "", es: "" }, until: "" });
-  assert.throws(() => validateNote({ style: "loud" }), /Note style/);
-  assert.throws(() => validateNote({ until: "31/12/2026" }), /date/);
+  assert.equal(n.from, "2026-12-01");
+  assert.match(n.id, /^[\w-]+$/);
+  assert.equal(validateNote({ body: "x" }, { id: "keep" }).id, "keep");
+  assert.throws(() => validateNote({}), /title or some text/);
+  assert.throws(() => validateNote({ title: "x", style: "loud" }), /Note style/);
+  assert.throws(() => validateNote({ title: "x", until: "31/12/2026" }), /date/);
+  assert.throws(() => validateNote({ title: "x", from: "2026-12-10", until: "2026-12-01" }), /on or after/);
   assert.throws(() => validateNote({ body: "x".repeat(601) }), /600/);
+});
+
+test("tile schedules validate days and times", () => {
+  assert.equal(validateSchedule(null), null);
+  assert.equal(validateSchedule({ enabled: false, days: [1] }), null);
+  assert.deepEqual(validateSchedule({ days: [5, 1, "3", 1], start: "05:00", end: "08:30" }), { days: [1, 3, 5], start: "05:00", end: "08:30" });
+  assert.deepEqual(validateSchedule({ days: [0, 6], start: "22:00", end: "06:00" }).days, [0, 6]);
+  assert.throws(() => validateSchedule({ days: [], start: "05:00", end: "08:00" }), /at least one day/);
+  assert.throws(() => validateSchedule({ days: [1], start: "5am", end: "08:00" }), /time like/);
+  assert.throws(() => validateSchedule({ days: [1], start: "08:00", end: "08:00" }), /different/);
+});
+
+test("tile PINs are hashed, checked, kept and cleared", () => {
+  const t = validateTile({ title: "Gear settings", pin: "4321" });
+  assert.ok(t.pinHash && t.pinSalt);
+  assert.ok(!JSON.stringify(t).includes("4321"));
+  assert.equal(verifyTilePin(t, "4321"), true);
+  assert.equal(verifyTilePin(t, "1234"), false);
+  assert.equal(verifyTilePin(t, "abc"), false);
+  const kept = validateTile({ ...t, title: "Renamed" }, t);
+  assert.equal(kept.pinHash, t.pinHash);
+  assert.equal(validateTile({ ...t, clearPin: true }, t).pinHash, "");
+  assert.equal(verifyTilePin(validateTile({ title: "Open" }), ""), true);
+  assert.throws(() => validateTile({ title: "x", pin: "12" }), /4 to 8 digits/);
+  assert.throws(() => validateTile({ title: "x", groupId: "nope" }, {}, []), /group/);
+  assert.equal(validateTile({ title: "x", groupId: "g1" }, {}, [{ id: "g1" }]).groupId, "g1");
+});
+
+test("content from older versions is upgraded", () => {
+  const c = normalizeContent({
+    tiles: [{ id: "a", title: { en: "A" } }], panels: [1], links: [1], optionLabels: {},
+    note: { active: true, style: "important", title: { en: "Old note" }, body: { en: "" }, until: "2027-01-01" },
+    settings: { timeZone: "UTC", refreshSeconds: 60 },
+  });
+  assert.equal(c.notes.length, 1);
+  assert.equal(c.notes[0].title.en, "Old note");
+  assert.equal(c.notes[0].until, "2027-01-01");
+  assert.equal(c.note, undefined);
+  assert.deepEqual(c.groups, []);
+  assert.equal(c.tiles[0].groupId, "");
+  assert.equal(c.tiles[0].schedule, null);
+  assert.equal(c.settings.screensaverSeconds, 180);
+  for (const gone of ["panels", "links", "optionLabels"]) assert.equal(c[gone], undefined);
+  assert.equal(c.settings.timeZone, undefined);
+  assert.deepEqual(normalizeContent({ tiles: [], note: { active: false, title: { en: "" }, body: { en: "" } } }).notes, []);
 });
 
 test("appearance validates colours and options", () => {

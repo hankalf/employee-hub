@@ -28,14 +28,34 @@
         <h1 id="greeting">&nbsp;</h1>
         <p id="intro" class="intro"></p>
       </div>
-      <aside id="note" class="note frost" hidden>
-        <span id="note-icon" class="note-icon" aria-hidden="true"></span>
-        <div><strong id="note-title"></strong><p id="note-body"></p></div>
-      </aside>
+      <div id="notes" class="notes" hidden></div>
     </section>
-    <section id="tiles" class="tiles" aria-label="Tools"></section>
+    <div id="tiles" aria-label="Tools"></div>
   </main>
   <footer class="kiosk-foot"><a href="/admin" id="admin-link">Admin</a></footer>
+
+  <dialog id="pin-dialog" class="pin-dialog">
+    <form method="dialog">
+      <h2 id="pin-title"></h2>
+      <p id="pin-sub" class="muted small"></p>
+      <div id="pin-dots" class="pin-dots" aria-live="polite"></div>
+      <div class="keypad" id="keypad"></div>
+      <p id="pin-error" class="alert" hidden></p>
+      <button type="button" class="cancel" id="pin-cancel"></button>
+    </form>
+  </dialog>
+
+  <div id="saver" class="saver" hidden>
+    <div class="saver-inner">
+      <div id="saver-brand" class="saver-brand"></div>
+      <div id="saver-clock" class="saver-clock"></div>
+      <p id="saver-date" class="saver-date"></p>
+      <div id="saver-notes" class="saver-notes"></div>
+      <div id="saver-qr" class="saver-qr frost"><img src="/qr.svg" alt="" /><span id="saver-qr-label"></span></div>
+      <p id="saver-hint" class="saver-hint"></p>
+    </div>
+  </div>
+
   <script src="/assets/common.js"></script>
   <script src="/assets/home.js"></script>
 </body>

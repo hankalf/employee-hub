@@ -6,16 +6,19 @@ const assert = require("node:assert/strict");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const AdmZip = require("adm-zip");
 const { createApp } = require("../lib/app");
 
 const ADMIN_PASSWORD = "hub-test-pass";
-let server, base, dataDir;
+let server, base, dataDir, ctx;
 
 before(async () => {
   dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "hub-test-"));
   const origLog = console.log;
   console.log = () => {};
-  const { app } = await createApp({ dataDir, adminPassword: ADMIN_PASSWORD, sessionSecret: "", publicUrl: "" });
+  const created = await createApp({ dataDir, adminPassword: ADMIN_PASSWORD, sessionSecret: "", publicUrl: "" });
+  ctx = created.ctx;
+  const app = created.app;
   console.log = origLog;
   await new Promise((resolve) => { server = app.listen(0, resolve); });
   base = `http://127.0.0.1:${server.address().port}`;
@@ -75,12 +78,14 @@ test("health check and kiosk pages are public", async () => {
   assert.equal((await fetch(base + "/api/nope")).status, 404);
 });
 
-test("the public hub view has the seeded tiles, note and appearance", async () => {
+test("the public hub view has the seeded tiles, notes and appearance", async () => {
   const hub = await (await fetch(base + "/api/hub")).json();
   assert.equal(hub.tiles.length, 4);
   assert.equal(hub.tiles[0].id, "checklist");
   assert.equal(hub.tiles[0].kind, "none");
-  assert.equal(hub.note.active, false);
+  assert.equal(hub.tiles[0].locked, false);
+  assert.deepEqual(hub.notes, []); // the seeded note is switched off
+  assert.deepEqual(hub.groups, []);
   assert.equal(hub.appearance.theme, "auto");
   assert.equal(hub.logo, "");
   assert.match(hub.publicUrl, /^http:\/\/127\.0\.0\.1:\d+$/);
@@ -139,24 +144,181 @@ test("tiles: add, edit, reorder, delete, with validation", async () => {
   assert.equal(info.kind, "form");
 });
 
-test("note and appearance are saved and shown to the kiosk", async () => {
+test("notes: add, schedule, reorder, delete", async () => {
   const c = await signIn();
-  let r = await c.put("/api/admin/note", { json: { active: true, style: "important", title: { en: "Safety meeting" }, body: { en: "Friday 2pm in the break room", es: "Viernes 2pm" }, until: "2099-01-01" } });
-  assert.equal(r.status, 200);
-  r = await c.put("/api/admin/note", { json: { style: "loud" } });
-  assert.equal(r.status, 400);
-  r = await c.put("/api/admin/appearance", { json: { theme: "dark", accent: "#ff8800", tileColumns: "3", showCodes: false } });
+  let r = await c.post("/api/admin/notes", { json: { style: "important", title: { en: "Safety meeting" }, body: { en: "Friday 2pm in the break room", es: "Viernes 2pm" }, until: "2099-01-01" } });
+  assert.equal(r.status, 201);
+  const a = await r.json();
+  r = await c.post("/api/admin/notes", { json: { title: "Next week", from: "2099-01-01" } });
+  const b = await r.json();
+  assert.equal((await c.post("/api/admin/notes", { json: { style: "loud", title: "x" } })).status, 400);
+  assert.equal((await c.post("/api/admin/notes", { json: {} })).status, 400);
+  let hub = await (await fetch(base + "/api/hub")).json();
+  assert.deepEqual(hub.notes.map((n) => n.id), [a.id, b.id]); // dates are applied on the kiosk's own clock
+  await c.put("/api/admin/notes/order", { json: { ids: [b.id, a.id] } });
+  await c.put(`/api/admin/notes/${b.id}`, { json: { active: false } });
+  hub = await (await fetch(base + "/api/hub")).json();
+  assert.deepEqual(hub.notes.map((n) => n.id), [a.id]);
+  assert.equal((await c.del(`/api/admin/notes/${b.id}`)).status, 200);
+  assert.equal((await c.put(`/api/admin/notes/${b.id}`, { json: { title: "x" } })).status, 404);
+  await c.del(`/api/admin/notes/${a.id}`);
+});
+
+test("appearance is saved and shown to the kiosk", async () => {
+  const c = await signIn();
+  let r = await c.put("/api/admin/appearance", { json: { theme: "dark", accent: "#ff8800", tileColumns: "3", showCodes: false } });
   assert.equal(r.status, 200);
   r = await c.put("/api/admin/appearance", { json: { accent: "orange" } });
   assert.equal(r.status, 400);
   const hub = await (await fetch(base + "/api/hub")).json();
-  assert.equal(hub.note.active, true);
-  assert.equal(hub.note.title.en, "Safety meeting");
   assert.equal(hub.appearance.theme, "dark");
   assert.equal(hub.appearance.accent, "#ff8800");
   assert.equal(hub.appearance.tileColumns, "3");
   assert.equal(hub.appearance.showCodes, false);
   assert.equal(hub.appearance.cardStyle, "frosted"); // untouched fields keep their defaults
+});
+
+test("groups: tiles can be grouped, groups reordered and deleted", async () => {
+  const c = await signIn();
+  const safety = await (await c.post("/api/admin/groups", { json: { title: { en: "Safety", es: "Seguridad" } } })).json();
+  const hr = await (await c.post("/api/admin/groups", { json: { title: "Time off" } })).json();
+  assert.equal((await c.post("/api/admin/groups", { json: { title: "" } })).status, 400);
+  let r = await c.put("/api/admin/tiles/checklist", { json: { groupId: safety.id } });
+  assert.equal((await r.json()).groupId, safety.id);
+  assert.equal((await c.put("/api/admin/tiles/pto", { json: { groupId: "missing" } })).status, 400);
+  await c.put("/api/admin/groups/order", { json: { ids: [hr.id, safety.id] } });
+  let hub = await (await fetch(base + "/api/hub")).json();
+  assert.deepEqual(hub.groups.map((g) => g.id), [hr.id, safety.id]);
+  assert.equal(hub.tiles.find((t) => t.id === "checklist").groupId, safety.id);
+  assert.equal((await c.del(`/api/admin/groups/${safety.id}`)).status, 200);
+  hub = await (await fetch(base + "/api/hub")).json();
+  assert.equal(hub.tiles.find((t) => t.id === "checklist").groupId, "", "tiles of a deleted group move to no group");
+  await c.del(`/api/admin/groups/${hr.id}`);
+});
+
+test("schedules are passed to the kiosk", async () => {
+  const c = await signIn();
+  let r = await c.put("/api/admin/tiles/checklist", { json: { schedule: { days: [1, 2, 3, 4, 5], start: "05:00", end: "08:00" } } });
+  assert.deepEqual((await r.json()).schedule, { days: [1, 2, 3, 4, 5], start: "05:00", end: "08:00" });
+  assert.equal((await c.put("/api/admin/tiles/checklist", { json: { schedule: { days: [], start: "05:00", end: "08:00" } } })).status, 400);
+  const hub = await (await fetch(base + "/api/hub")).json();
+  assert.deepEqual(hub.tiles.find((t) => t.id === "checklist").schedule.days, [1, 2, 3, 4, 5]);
+  r = await c.put("/api/admin/tiles/checklist", { json: { schedule: null } });
+  assert.equal((await r.json()).schedule, null);
+});
+
+test("lead-only tiles hide their link until the right PIN is entered", async () => {
+  const c = await signIn();
+  let r = await c.put("/api/admin/tiles/gear", { json: { url: "https://forms.monday.com/forms/secret123?r=use1", pin: "2468" } });
+  const saved = await r.json();
+  assert.equal(saved.hasPin, true);
+  assert.equal(saved.pinHash, undefined, "the admin API never returns the PIN hash");
+  const content = await (await c.get("/api/admin/content")).json();
+  assert.equal(content.tiles.find((t) => t.id === "gear").hasPin, true);
+  assert.ok(!JSON.stringify(content).includes("pinHash"));
+
+  const hub = await (await fetch(base + "/api/hub")).json();
+  const pub = hub.tiles.find((t) => t.id === "gear");
+  assert.equal(pub.locked, true);
+  assert.equal(pub.hasLink, true);
+  assert.equal(pub.url, "");
+  assert.ok(!JSON.stringify(hub).includes("secret123"), "the kiosk never sees a locked tile's link");
+
+  assert.equal((await fetch(base + "/api/tiles/gear/link")).status, 403);
+  const unlock = (pin) => fetch(base + "/api/tiles/gear/unlock", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin }) });
+  r = await unlock("1111");
+  assert.equal(r.status, 403);
+  assert.equal((await r.json()).code, "wrong");
+  r = await unlock("2468");
+  assert.equal(r.status, 200);
+  const { token } = await r.json();
+  r = await fetch(base + "/api/tiles/gear/link?k=" + encodeURIComponent(token));
+  assert.equal(r.status, 200);
+  const link = await r.json();
+  assert.equal(link.embedUrl, "https://forms.monday.com/forms/embed/secret123?r=use1");
+  assert.equal((await fetch(base + "/api/tiles/pto/link?k=" + encodeURIComponent(token))).status, 200, "unlocked tiles don't need a token");
+  assert.equal((await fetch(base + "/api/tiles/gear/link?k=" + encodeURIComponent(token.replace(/.$/, "x")))).status, 403);
+
+  // Changing other fields keeps the PIN; clearing it unlocks the tile.
+  await c.put("/api/admin/tiles/gear", { json: { description: { en: "Leads only" } } });
+  assert.equal((await unlock("2468")).status, 200);
+  r = await c.put("/api/admin/tiles/gear", { json: { clearPin: true } });
+  assert.equal((await r.json()).hasPin, false);
+  assert.equal((await (await fetch(base + "/api/hub")).json()).tiles.find((t) => t.id === "gear").locked, false);
+  await c.put("/api/admin/tiles/gear", { json: { url: "" } });
+});
+
+test("taps are counted and kiosks report in", async () => {
+  const c = await signIn();
+  for (let i = 0; i < 3; i++) assert.equal((await fetch(base + "/api/tap/pto", { method: "POST" })).status, 204);
+  await fetch(base + "/api/tap/does-not-exist", { method: "POST" });
+  const beat = (body) => fetch(base + "/api/heartbeat", { method: "POST", headers: { "Content-Type": "text/plain", "User-Agent": "Mozilla/5.0 (iPad; CPU OS 18_0 like Mac OS X)" }, body: JSON.stringify(body) });
+  assert.equal((await beat({ deviceId: "0123456789abcdef0123", screen: "1180x820", path: "/kiosk" })).status, 204);
+  await beat({ deviceId: "not-valid", screen: "1x1" });
+  let s = await (await c.get("/api/admin/stats")).json();
+  assert.equal(s.usage.pto.last30, 3);
+  assert.equal(s.usage.pto.last7, 3);
+  assert.equal(s.usage.pto.total, 3);
+  assert.equal(s.usage["does-not-exist"], undefined);
+  assert.equal(s.devices.length, 1);
+  assert.equal(s.devices[0].screen, "1180x820");
+  assert.match(s.devices[0].ua, /iPad/);
+  assert.equal((await c.put("/api/admin/devices/0123456789abcdef0123", { json: { name: "Break room iPad" } })).status, 200);
+  assert.equal((await c.put("/api/admin/devices/nope", { json: { name: "x" } })).status, 404);
+  s = await (await c.get("/api/admin/stats")).json();
+  assert.equal(s.devices[0].name, "Break room iPad");
+  await ctx.stats.flush();
+  await ctx.devices.flush();
+  assert.equal(JSON.parse(fs.readFileSync(path.join(dataDir, "stats.json"), "utf8")).taps.pto.total, 3);
+  assert.equal((await fetch(base + "/api/admin/stats")).status, 401);
+});
+
+test("backup and restore round-trip everything", async () => {
+  const c = await signIn();
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
+  const fd = new FormData();
+  fd.append("logo", new Blob([png], { type: "image/png" }), "logo.png");
+  await c.post("/api/admin/logo", { body: fd });
+  await c.post("/api/admin/notes", { json: { title: "In the backup" } });
+  const r = await c.get("/api/admin/backup");
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get("content-disposition"), /employee-hub-backup-\d{4}-\d{2}-\d{2}\.zip/);
+  const zipBuf = Buffer.from(await r.arrayBuffer());
+  const names = new AdmZip(zipBuf).getEntries().map((e) => e.entryName).sort();
+  assert.ok(names.includes("content.json") && names.includes("stats.json") && names.includes("devices.json"));
+  assert.ok(names.some((n) => /^uploads\/logo-\d+\.png$/.test(n)));
+
+  // Change things, then restore
+  const hubBefore = await (await fetch(base + "/api/hub")).json();
+  await c.del("/api/admin/tiles/pto");
+  await c.del("/api/admin/logo");
+  const restore = (buf, name) => { const f = new FormData(); f.append("backup", new Blob([buf], { type: "application/zip" }), name); return c.post("/api/admin/restore", { body: f }); };
+  assert.equal((await restore(zipBuf, "backup.zip")).status, 200);
+  const hubAfter = await (await fetch(base + "/api/hub")).json();
+  assert.deepEqual(hubAfter.tiles.map((t) => t.id), hubBefore.tiles.map((t) => t.id));
+  assert.ok(hubAfter.notes.some((n) => n.title.en === "In the backup"));
+  assert.equal((await fetch(base + "/logo")).status, 200);
+  assert.equal((await (await c.get("/api/admin/stats")).json()).usage.pto.total, 3);
+  assert.ok(fs.readdirSync(dataDir).some((f) => f.startsWith("before-restore-")));
+
+  // Bad uploads are refused and change nothing
+  assert.equal((await restore(Buffer.from("not a zip"), "x.zip")).status, 400);
+  const bad = new AdmZip();
+  bad.addFile("readme.txt", Buffer.from("hi"));
+  const res = await restore(bad.toBuffer(), "x.zip");
+  assert.equal(res.status, 400);
+  assert.match((await res.json()).error, /content\.json/);
+  const evil = new AdmZip();
+  evil.addFile("content.json", Buffer.from(JSON.stringify({ tiles: [] })));
+  evil.addFile("uploads/../../escape.png", png);
+  evil.addFile("uploads/script.html", Buffer.from("<script>"));
+  assert.equal((await restore(evil.toBuffer(), "x.zip")).status, 200);
+  assert.ok(!fs.existsSync(path.join(dataDir, "..", "escape.png")));
+  assert.deepEqual(fs.readdirSync(path.join(dataDir, "uploads")), [], "only the referenced logo is ever extracted");
+  assert.equal((await (await fetch(base + "/api/hub")).json()).logo, "");
+  // Put the good backup back for the remaining tests
+  assert.equal((await restore(zipBuf, "backup.zip")).status, 200);
+  await c.del("/api/admin/logo");
 });
 
 test("logo upload, serving and removal", async () => {

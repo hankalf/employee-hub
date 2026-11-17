@@ -1,11 +1,23 @@
 # Employee Hub
 
-A kiosk for warehouse employees, shown on an iPad or a computer screen, or opened on a phone by scanning a QR code. The kiosk page is a grid of big, glove-friendly tiles that open your **monday.com forms** (daily forklift check, tag-outs, PTO, gear requests…) inside the page. A note beside the greeting carries announcements. An admin area sets up the tiles, the note, your logo and how the kiosk looks, in English and Spanish.
+A kiosk for warehouse employees, shown on an iPad or a computer screen, or opened on a phone by scanning a QR code. The kiosk page is a grid of big, glove-friendly tiles that open your **monday.com forms** (daily forklift check, tag-outs, PTO, gear requests…) inside the page. Notes beside the greeting carry announcements. An admin area sets up the tiles, notes, your logo and how the kiosk looks, in English and Spanish.
 
-- **Kiosk** (`/kiosk`): greeting, note, and the tiles across the full width. Picks up admin changes within a minute, so it never needs reloading. The root address `/` redirects here, so the short address on the QR code works.
+What's included:
+
+- **Tiles** that open monday.com forms inside the page, optionally under **group headings** (Safety, Time off…).
+- **Scheduled tiles** that only appear on certain days and times, such as the pre-shift check from 5 to 8 am.
+- **Lead-only tiles** that ask for a PIN on a keypad before opening; the link stays hidden until the PIN is right.
+- **Notes** beside the greeting, several at once, each with optional start and end dates so you can schedule them ahead.
+- A **screensaver** after a few idle minutes: logo, clock, notes and a big QR code.
+- **Tap counts** per tile for the last 7 and 30 days.
+- **Kiosk status**: every tablet checks in once a minute and the admin shows which are online.
+- **Backup and restore** of everything as a single zip.
+- Your **logo** and **appearance** choices (theme, colours, card style, corners, font, tile size and columns).
+
+- **Kiosk** (`/kiosk`): greeting, notes, and the tiles across the full width. Picks up admin changes within a minute, so it never needs reloading. The root address `/` redirects here, so the short address on the QR code works.
 - **Form page** (`/open/t/…`): a tile's form inside the hub with a "Back to hub" button. After a period with no taps it returns home.
 - **QR code** (`/qr`): a printable code that opens the hub on a phone. A small one is also in the top bar.
-- **Admin** (`/admin`): tiles and settings, protected by the `ADMIN_PASSWORD` service variable. Reached from the small *Admin* link at the bottom of the kiosk page.
+- **Admin** (`/admin`): *Tiles*, *Notes* and *Settings*, protected by the `ADMIN_PASSWORD` service variable. Reached from the small *Admin* link at the bottom of the kiosk page.
 
 Built with Node.js and Express. No database: settings and the logo live on a Railway Volume. No build step.
 
@@ -14,7 +26,7 @@ Built with Node.js and Express. No database: settings and the logo live on a Rai
 ## Deploying on Railway
 
 1. **Create the service.** In Railway, go to *New Project → Deploy from GitHub repo* and pick this repository. Railway detects Node and runs `npm start`; `railway.json` adds the health check and restart policy.
-2. **Add a Volume.** Right-click the service → *Attach Volume* → mount path **`/data`**. Without it, your tiles, settings and logo are wiped on every redeploy.
+2. **Add a Volume.** Right-click the service → *Attach Volume* → mount path **`/data`**. Without it, your tiles, notes, settings, logo and tap counts are wiped on every redeploy.
 3. **Set variables.** Service → *Variables*:
 
    | Variable | Required | What it does |
@@ -39,15 +51,41 @@ Built with Node.js and Express. No database: settings and the logo live on a Rai
 
 Any web address works too: a Google Form, a SharePoint page, a monday board or dashboard (those need a monday login, so choose *Open in a new tab*).
 
-### Note
+Each tile row shows how many times it was tapped in the last 30 days; hover for the all-time total.
 
-*Admin → Settings → Note on the kiosk*: a title and text in English and Spanish, a style (info, important or good news) and an optional "show until" date. It appears beside the greeting on the kiosk and hides itself after that date.
+### Groups
+
+*Admin → Tiles → Add group* creates a heading such as *Safety* or *Time off*. Choose a tile's group in the tile editor. Tiles without a group are shown first; groups follow in the order you set with the arrows. Deleting a group keeps its tiles.
+
+### Schedules
+
+In the tile editor, tick *Only show this tile at certain times*, pick the days and the time window. An end time earlier than the start runs overnight (22:00 to 06:00). The kiosk uses its own clock, so set the tablet's time zone correctly.
+
+### Lead-only tiles
+
+In the tile editor, tick *Ask for a PIN before opening* and enter 4 to 8 digits. The tile shows a lock and opens a keypad. The form link is never sent to the kiosk until the right PIN is entered, and then only for 15 minutes on that device. After 15 wrong PINs from one place, the keypad is locked for 15 minutes. Leave the PIN box blank when editing to keep the current PIN; untick the box to remove it.
+
+### Notes
+
+*Admin → Notes*: a title and text in English and Spanish, a style (info, important or good news) and optional *Show from* and *Show until* dates. Several notes can show at once, stacked in the order you set. Each row says whether it is showing now, scheduled or finished.
+
+### Screensaver
+
+*Settings → Kiosk → Screensaver after* (default 3 minutes; 0 turns it off). With no taps on the home screen for that long, the kiosk shows the logo, a large clock, the current notes and the QR code. The first tap only closes the screensaver, so nobody opens a form by accident.
+
+### Kiosks
+
+Every device showing the kiosk checks in once a minute. The admin header shows how many are online, and *Settings → Kiosks* lists each one with when it was last seen. Give each a name (for example *Break room iPad*) so you can tell them apart. A kiosk that goes quiet has usually lost power or Wi-Fi.
 
 ### Logo and appearance
 
-*Admin → Settings → Logo*: upload a PNG, SVG, JPG, GIF or WebP (max 2 MB). It replaces the accent pill in the top bar of the kiosk, on the QR page and in the admin area.
+*Admin → Settings → Logo*: upload a PNG, SVG, JPG, GIF or WebP (max 2 MB). It replaces the accent pill in the top bar of the kiosk, on the screensaver, on the QR page and in the admin area.
 
 *Admin → Settings → Appearance*: theme (follow the device, always light or always dark), spectrum or solid accent colour, optional background colour, card style (frosted, solid or outline), corner roundness, font, tile size, tiles per row, and whether to show the corner labels, the date and the intro line. A live preview of the kiosk sits under the form and updates when you save.
+
+### Backup and restore
+
+*Settings → Backup and restore → Download backup* gives you a zip with every tile, group, note and setting, the logo, tap counts and the kiosk list. *Restore from backup* replaces everything with a zip's contents; the content from just before is kept on the server as `before-restore-<date>.json` (the last two are kept). Railway's own Volume backups are worth turning on too.
 
 ### Spanish
 
@@ -75,7 +113,9 @@ Local data is stored in `./storage` (git-ignored). GitHub Actions runs `npm test
 ## What's on the Volume
 
 ```
-/data/content.json    tiles, note, appearance, settings
+/data/content.json    tiles, groups, notes, appearance, settings
+/data/stats.json      tap counts per tile (last 90 days)
+/data/devices.json    kiosks that have checked in
 /data/uploads/        the logo
 /data/session.key     cookie signing key (if SESSION_SECRET isn't set)
 ```
@@ -87,9 +127,11 @@ All small; Railway's Volume backups cover them.
 ```
 server.js                 Reads config from environment variables and starts the app
 lib/app.js                Express app: kiosk pages, public API, admin login and admin API, logo upload
-lib/store.js              content.json: validation for tiles, note, appearance and settings
+lib/store.js              content.json: validation for tiles, groups, notes, schedules, PINs, appearance and settings
+lib/stats.js              Tap counts and kiosk check-ins
+lib/backup.js             Backup zip and restore
 lib/links.js              Link clean-up; turns form share links into embed links
-lib/auth.js               Admin session cookie, CSRF check, sign-in rate limiting
+lib/auth.js               Admin session cookie, PIN unlock tokens, CSRF check, sign-in and PIN rate limiting
 lib/qr.js                 QR code encoder (no dependencies)
 public/                   Kiosk pages (index, open, qr) and shared CSS/JS; admin CSS/JS
 views/                    Admin sign-in and admin pages
@@ -101,5 +143,6 @@ test/                     Automated tests (node --test)
 
 - The kiosk pages are public. The admin area needs `ADMIN_PASSWORD`; after 10 wrong tries from one address, sign-in is locked for 15 minutes.
 - The admin cookie is HttpOnly and signed. Every change made through the API requires a custom header, which blocks cross-site request forgery.
-- The logo is served with a sandboxing Content-Security-Policy, and only image types are accepted.
+- Tile PINs are stored hashed (scrypt). A locked tile's link is only sent after the right PIN, as a 15-minute signed token. This keeps casual users out; it is not a substitute for monday.com's own permissions on sensitive forms.
+- The logo is served with a sandboxing Content-Security-Policy, and only image types are accepted. A restore only extracts the logo its content refers to.
 - Pages send a Content-Security-Policy that allows only https pages to be embedded, and the hub can only be framed by itself (for the admin preview).

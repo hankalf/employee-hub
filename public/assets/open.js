@@ -7,6 +7,10 @@
   var id = m ? decodeURIComponent(m[1]) : "";
   var WARN_SECONDS = 30;
 
+  var token = new URLSearchParams(location.search).get("k") || "";
+  if (!token) { try { token = sessionStorage.getItem("hub-unlock-" + id) || ""; } catch (e) { /* ignore */ } }
+
+  H.startHeartbeat();
   H.fetchJson("/api/hub").then(function (hub) {
     H.resolveLang(hub.settings);
     H.applyAppearance(hub.appearance);
@@ -16,6 +20,19 @@
     if (!item) return showMessage(H.t("notFound"));
     $("title").textContent = H.pick(item.title);
     document.title = H.pick(item.title) + " · " + document.title;
+    if (!item.hasLink) return showMessage(H.t("linkMissing"));
+    // PIN-protected tiles don't reveal their link until the PIN token is checked.
+    if (item.locked) {
+      return H.fetchJson("/api/tiles/" + encodeURIComponent(id) + "/link?k=" + encodeURIComponent(token))
+        .then(function (link) { show(hub, { title: item.title, url: link.url, embedUrl: link.embedUrl }); })
+        .catch(function (err) { showMessage(err.status === 403 ? H.t("pinExpired") : H.t("couldNotLoad")); });
+    }
+    show(hub, item);
+  }).catch(function () {
+    showMessage(H.t("couldNotLoad"));
+  });
+
+  function show(hub, item) {
     if (!item.url) return showMessage(H.t("linkMissing"));
 
     var newtab = $("newtab");
@@ -36,9 +53,7 @@
     }, 8000);
 
     startIdleTimer(hub.settings.idleReturnSeconds);
-  }).catch(function () {
-    showMessage(H.t("couldNotLoad"));
-  });
+  }
 
   function showMessage(text) {
     var msg = $("frame-msg");

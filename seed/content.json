@@ -1,54 +1,132 @@
 {
   "settings": {
-    "hubName": { "en": "Employee Hub", "es": "Portal del Empleado" },
+    "hubName": {
+      "en": "Employee Hub",
+      "es": "Portal del Empleado"
+    },
     "intro": {
       "en": "Tap a tool to get started. Every submission goes straight to the right people.",
       "es": "Toque una herramienta para comenzar. Cada envío llega directo a las personas correctas."
     },
-    "teamWord": { "en": "team", "es": "equipo" },
-    "languages": ["en", "es"],
+    "teamWord": {
+      "en": "team",
+      "es": "equipo"
+    },
+    "languages": [
+      "en",
+      "es"
+    ],
     "defaultLang": "en",
     "idleReturnSeconds": 300,
     "publicUrl": "",
-    "showQr": true
+    "showQr": true,
+    "screensaverSeconds": 180
   },
-  "note": {
-    "active": false,
-    "style": "info",
-    "title": { "en": "Welcome to the new hub", "es": "Bienvenidos al nuevo portal" },
-    "body": { "en": "Tap a tile to open the form. Ask a lead if something is missing.", "es": "Toque un mosaico para abrir el formulario. Pregunte a un líder si falta algo." },
-    "until": ""
-  },
+  "notes": [
+    {
+      "id": "welcome",
+      "active": false,
+      "style": "info",
+      "title": {
+        "en": "Welcome to the new hub",
+        "es": "Bienvenidos al nuevo portal"
+      },
+      "body": {
+        "en": "Tap a tile to open the form. Ask a lead if something is missing.",
+        "es": "Toque un mosaico para abrir el formulario. Pregunte a un líder si falta algo."
+      },
+      "from": "",
+      "until": ""
+    }
+  ],
+  "groups": [],
   "appearance": {
-    "theme": "auto", "accentStyle": "spectrum", "accent": "#0358f7", "background": "",
-    "cardStyle": "frosted", "radius": "round", "font": "system", "tileSize": "large", "tileColumns": "auto",
-    "showCodes": true, "showDate": true, "showIntro": true
+    "theme": "auto",
+    "accentStyle": "spectrum",
+    "accent": "#0358f7",
+    "background": "",
+    "cardStyle": "frosted",
+    "radius": "round",
+    "font": "system",
+    "tileSize": "large",
+    "tileColumns": "auto",
+    "showCodes": true,
+    "showDate": true,
+    "showIntro": true
   },
   "logo": "",
   "tiles": [
     {
       "id": "checklist",
-      "title": { "en": "Daily forklift check", "es": "Revisión diaria del montacargas" },
-      "description": { "en": "Pre-shift inspection before you drive.", "es": "Inspección antes de manejar." },
-      "icon": "📋", "url": "", "open": "embed", "active": true, "code": "01"
+      "title": {
+        "en": "Daily forklift check",
+        "es": "Revisión diaria del montacargas"
+      },
+      "description": {
+        "en": "Pre-shift inspection before you drive.",
+        "es": "Inspección antes de manejar."
+      },
+      "icon": "📋",
+      "url": "",
+      "open": "embed",
+      "active": true,
+      "code": "01",
+      "groupId": "",
+      "schedule": null
     },
     {
       "id": "tagout",
-      "title": { "en": "Tag out a forklift", "es": "Sacar de servicio un montacargas" },
-      "description": { "en": "Report damage and flag it for a tech.", "es": "Reporte daños y avise a un técnico." },
-      "icon": "🔧", "url": "", "open": "embed", "active": true, "code": "02"
+      "title": {
+        "en": "Tag out a forklift",
+        "es": "Sacar de servicio un montacargas"
+      },
+      "description": {
+        "en": "Report damage and flag it for a tech.",
+        "es": "Reporte daños y avise a un técnico."
+      },
+      "icon": "🔧",
+      "url": "",
+      "open": "embed",
+      "active": true,
+      "code": "02",
+      "groupId": "",
+      "schedule": null
     },
     {
       "id": "pto",
-      "title": { "en": "Request time off", "es": "Pedir tiempo libre" },
-      "description": { "en": "PTO, unpaid, or bereavement.", "es": "PTO, sin pago o por duelo." },
-      "icon": "🏖️", "url": "", "open": "embed", "active": true, "code": "03"
+      "title": {
+        "en": "Request time off",
+        "es": "Pedir tiempo libre"
+      },
+      "description": {
+        "en": "PTO, unpaid, or bereavement.",
+        "es": "PTO, sin pago o por duelo."
+      },
+      "icon": "🏖️",
+      "url": "",
+      "open": "embed",
+      "active": true,
+      "code": "03",
+      "groupId": "",
+      "schedule": null
     },
     {
       "id": "gear",
-      "title": { "en": "Request new gear", "es": "Pedir equipo nuevo" },
-      "description": { "en": "Jackets, bibs, gloves, and more.", "es": "Chaquetas, overoles, guantes y más." },
-      "icon": "🦺", "url": "", "open": "embed", "active": true, "code": "04"
+      "title": {
+        "en": "Request new gear",
+        "es": "Pedir equipo nuevo"
+      },
+      "description": {
+        "en": "Jackets, bibs, gloves, and more.",
+        "es": "Chaquetas, overoles, guantes y más."
+      },
+      "icon": "🦺",
+      "url": "",
+      "open": "embed",
+      "active": true,
+      "code": "04",
+      "groupId": "",
+      "schedule": null
     }
   ]
 }

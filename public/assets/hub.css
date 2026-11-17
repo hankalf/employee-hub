@@ -103,14 +103,14 @@ main { position: relative; max-width: 100rem; margin: 0 auto; padding: 1.5rem; }
 .date { margin: 0; font-size: .95rem; color: var(--muted-fg); text-transform: capitalize; }
 .greeting h1 { margin-top: .25rem; font-size: clamp(2.25rem, 5vw, 3.75rem); font-weight: 300; letter-spacing: -.04em; line-height: 1.05; }
 .intro { margin: .5rem 0 0; max-width: 36rem; font-size: .95rem; color: var(--muted-fg); }
-.note { flex: 0 1 28rem; display: flex; gap: 1rem; padding: 1.25rem 1.5rem; border-radius: var(--radius-md); border-left: 6px solid var(--accent); }
+.note { display: flex; gap: 1rem; padding: 1.25rem 1.5rem; border-radius: var(--radius-md); border-left: 6px solid var(--accent); }
 .note-icon { flex: none; font-size: 1.5rem; line-height: 1.2; }
 .note strong { display: block; font-size: 1.05rem; font-weight: 500; letter-spacing: -.01em; }
 .note p { margin: .25rem 0 0; font-size: .9rem; color: var(--muted-fg); white-space: pre-line; }
 .note--important { border-left-color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, var(--card)); }
 .note--important p { color: var(--fg); }
 .note--success { border-left-color: var(--ok); background: color-mix(in srgb, var(--ok) 8%, var(--card)); }
-@media (max-width: 760px) { .note { flex-basis: 100%; } }
+@media (max-width: 760px) { .notes { flex-basis: 100%; } }
 
 .tiles { display: grid; grid-template-columns: var(--tile-cols); gap: 1rem; }
 @media (max-width: 900px) { .tiles { grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); } }
@@ -132,6 +132,41 @@ main { position: relative; max-width: 100rem; margin: 0 auto; padding: 1.5rem; }
 .empty { padding: 2rem; border-radius: var(--radius); color: var(--muted-fg); font-size: .9rem; }
 .empty strong { display: block; color: var(--fg); font-weight: 500; margin-bottom: .25rem; }
 .alert { color: var(--danger); font-size: .875rem; margin: 0; }
+
+.notes { flex: 0 1 28rem; display: flex; flex-direction: column; gap: .75rem; }
+.group-title { margin: 1.75rem 0 .75rem; font-size: 1rem; font-weight: 500; letter-spacing: .02em; text-transform: uppercase; color: var(--muted-fg); }
+.tiles + .group-title, .group-title:first-child { margin-top: 1.75rem; }
+#tiles > .group-title:first-child { margin-top: 0; }
+.tile--locked .badge { background: var(--accent-bg); color: var(--accent); }
+
+/* PIN keypad */
+.pin-dialog { width: min(22rem, calc(100vw - 2rem)); padding: 0; border: 0; border-radius: var(--radius); background: var(--card); color: var(--fg); box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+.pin-dialog::backdrop { background: rgba(0,0,0,.45); backdrop-filter: blur(4px); }
+.pin-dialog form { padding: 1.5rem; display: flex; flex-direction: column; align-items: center; gap: .75rem; text-align: center; }
+.pin-dialog h2 { font-size: 1.25rem; font-weight: 500; }
+.pin-dots { display: flex; gap: .6rem; min-height: 1.25rem; margin: .25rem 0; }
+.pin-dots span { width: .9rem; height: .9rem; border-radius: 50%; border: 2px solid var(--input); }
+.pin-dots span.on { background: var(--fg); border-color: var(--fg); }
+.keypad { display: grid; grid-template-columns: repeat(3, 4.25rem); gap: .5rem; }
+.keypad button { height: 3.5rem; border: 0; border-radius: var(--radius-sm); background: var(--muted); font-size: 1.4rem; font-weight: 500; }
+.keypad button:active { background: var(--secondary); }
+.keypad button.ok { background: var(--primary); color: var(--primary-fg); font-size: 1rem; }
+.pin-dialog .cancel { margin-top: .25rem; background: none; border: 0; color: var(--muted-fg); font-size: .9rem; min-height: 2.5rem; }
+
+/* Screensaver */
+.saver { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; background: var(--bg); cursor: pointer; }
+.saver-inner { display: flex; flex-direction: column; align-items: center; gap: 1.25rem; max-width: 40rem; padding: 2rem; text-align: center; }
+.saver-brand { display: flex; align-items: center; gap: .75rem; font-size: 1.5rem; font-weight: 500; }
+.saver-brand img { height: 5rem; max-width: 20rem; object-fit: contain; }
+.saver-brand .pill { width: 3rem; height: .9rem; border-radius: 999px; }
+.saver-clock { font-size: clamp(3rem, 10vw, 6rem); font-weight: 300; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.saver-date { margin: -.75rem 0 0; color: var(--muted-fg); text-transform: capitalize; }
+.saver-notes { display: flex; flex-direction: column; gap: .75rem; width: 100%; max-width: 28rem; text-align: left; }
+.saver-qr { display: flex; align-items: center; gap: 1rem; padding: .75rem 1rem .75rem .75rem; border-radius: var(--radius-md); }
+.saver-qr img { width: 6.5rem; height: 6.5rem; border-radius: .5rem; background: #fff; }
+.saver-qr span { font-size: .9rem; color: var(--muted-fg); max-width: 12rem; }
+.saver-hint { margin: 0; font-size: 1rem; color: var(--muted-fg); animation: pulse 2.4s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: .5; } 50% { opacity: 1; } }
 
 .kiosk-foot { max-width: 100rem; margin: 0 auto; padding: 0 1.5rem 1rem; text-align: right; }
 .kiosk-foot a { font-size: .7rem; color: var(--muted-fg); opacity: .6; text-decoration: none; }

@@ -13,6 +13,9 @@
       qrEyebrow: "Take it with you", qrTitle: "Scan to open the hub", qrPrint: "Print this code",
       qrAlt: "QR code linking to the employee hub", linkMissing: "This tool isn't set up yet. Please tell a lead.",
       notFound: "That tool no longer exists.", frameBlocked: "If the form doesn't appear here, open it in a new tab.",
+      leadsOnly: "Leads only", pinFor: "Enter the PIN for {x}", pinWrong: "Incorrect PIN. Try again.",
+      pinLocked: "Too many tries. Please wait 15 minutes.", pinExpired: "Please enter the PIN again.", cancel: "Cancel", open: "Open",
+      tapToStart: "Tap anywhere to start",
     },
     es: {
       openOnPhone: "Abrir en su teléfono", switchLang: "Switch to English",
@@ -24,6 +27,9 @@
       qrEyebrow: "Llévelo con usted", qrTitle: "Escanee para abrir el portal", qrPrint: "Imprimir este código",
       qrAlt: "Código QR que abre el portal del empleado", linkMissing: "Esta herramienta aún no está lista. Avise a un líder.",
       notFound: "Esa herramienta ya no existe.", frameBlocked: "Si el formulario no aparece aquí, ábralo en otra pestaña.",
+      leadsOnly: "Solo líderes", pinFor: "Ingrese el PIN de {x}", pinWrong: "PIN incorrecto. Intente de nuevo.",
+      pinLocked: "Demasiados intentos. Espere 15 minutos.", pinExpired: "Ingrese el PIN de nuevo.", cancel: "Cancelar", open: "Abrir",
+      tapToStart: "Toque en cualquier lugar para comenzar",
     },
   };
 
@@ -134,12 +140,53 @@
     });
   }
 
-  /** Local date as YYYY-MM-DD on this device, for the note's "show until" date. */
+  /** Local date as YYYY-MM-DD on this device, for note dates and tile schedules. */
   function today() {
     var d = new Date();
     return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
   }
+  /** Notes that are switched on and inside their date range right now. */
+  function currentNotes(notes) {
+    var t = today();
+    return (notes || []).filter(function (n) {
+      return n.active && (!n.from || n.from <= t) && (!n.until || n.until >= t) && (pick(n.title) || pick(n.body));
+    });
+  }
+  /** Is a scheduled tile available at this moment on this device's clock? */
+  function tileAvailable(t) {
+    var s = t.schedule;
+    if (!s) return true;
+    var now = new Date();
+    var day = now.getDay(), hm = String(now.getHours()).padStart(2, "0") + ":" + String(now.getMinutes()).padStart(2, "0");
+    var onDay = s.days.indexOf(day) >= 0, onPrevDay = s.days.indexOf((day + 6) % 7) >= 0;
+    if (s.start < s.end) return onDay && hm >= s.start && hm < s.end;
+    return (onDay && hm >= s.start) || (onPrevDay && hm < s.end); // overnight window
+  }
+  /** A random id for this device, kept in localStorage, so the admin can see which kiosks are online. */
+  function deviceId() {
+    var id = "";
+    try { id = localStorage.getItem("hub-device") || ""; } catch (e) { /* private mode */ }
+    if (!/^[a-f0-9]{16,32}$/.test(id)) {
+      var a = new Uint8Array(12);
+      (window.crypto || {}).getRandomValues ? crypto.getRandomValues(a) : a.forEach(function (_, i) { a[i] = Math.floor(Math.random() * 256); });
+      id = Array.prototype.map.call(a, function (b) { return b.toString(16).padStart(2, "0"); }).join("");
+      try { localStorage.setItem("hub-device", id); } catch (e) { /* ignore */ }
+    }
+    return id;
+  }
+  function heartbeat() {
+    var body = JSON.stringify({ deviceId: deviceId(), screen: window.innerWidth + "x" + window.innerHeight, path: location.pathname });
+    fetch("/api/heartbeat", { method: "POST", headers: { "Content-Type": "text/plain" }, body: body, keepalive: true }).catch(function () {});
+  }
+  function startHeartbeat() {
+    heartbeat();
+    setInterval(heartbeat, 60000);
+  }
+  function countTap(id) {
+    fetch("/api/tap/" + encodeURIComponent(id), { method: "POST", keepalive: true }).catch(function () {});
+  }
 
   window.Hub = { t: t, pick: pick, icon: icon, noteIcon: function (s) { return NOTE_ICONS[s] || NOTE_ICONS.info; }, lang: lang, setLang: setLang, resolveLang: resolveLang,
-    locale: locale, el: el, fetchJson: fetchJson, applyAppearance: applyAppearance, renderBrand: renderBrand, renderLangToggle: renderLangToggle, today: today };
+    locale: locale, el: el, fetchJson: fetchJson, applyAppearance: applyAppearance, renderBrand: renderBrand, renderLangToggle: renderLangToggle, today: today,
+    currentNotes: currentNotes, tileAvailable: tileAvailable, startHeartbeat: startHeartbeat, countTap: countTap };
 })();

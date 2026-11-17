@@ -2,7 +2,7 @@
   "name": "employee-hub",
   "version": "1.0.0",
   "private": true,
-  "description": "Warehouse employee hub for an iPad kiosk or phone: monday.com forms as big tiles, live board panels, quick links and a QR code.",
+  "description": "Warehouse employee kiosk for an iPad or screen: monday.com form tiles, notes, groups, lead-only tiles, screensaver, usage counts and an admin area.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -13,6 +13,8 @@
     "node": ">=20"
   },
   "dependencies": {
+    "adm-zip": "^0.5.18",
+    "archiver": "^7.0.1",
     "express": "^5.1.0",
     "multer": "^2.5.0"
   },

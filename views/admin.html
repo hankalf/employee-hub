@@ -14,6 +14,7 @@
     <div class="admin-top-inner">
       <a class="brand" id="brand" href="/admin"><span class="pill spectrum" aria-hidden="true"></span><span class="brand-name">Employee Hub · Admin</span></a>
       <nav>
+        <button type="button" id="kiosk-status" class="kiosk-status" title="Kiosks that checked in during the last 3 minutes"><span class="dot"></span><span id="kiosk-status-text">Kiosks…</span></button>
         <a href="/kiosk" target="_blank" rel="noopener">Open the kiosk ↗</a>
         <a href="/qr" target="_blank" rel="noopener">QR code ↗</a>
         <form method="post" action="/admin/logout"><button type="submit">Sign out</button></form>
@@ -24,43 +25,46 @@
   <main class="admin-main">
     <div class="tabs" role="tablist">
       <button type="button" role="tab" data-tab="tiles" aria-selected="true">Tiles</button>
+      <button type="button" role="tab" data-tab="notes" aria-selected="false">Notes</button>
       <button type="button" role="tab" data-tab="settings" aria-selected="false">Settings</button>
     </div>
 
+    <!-- Tiles -->
     <section id="tab-tiles" class="tab">
       <div class="tab-head">
-        <div><h2>Tiles</h2><p>The buttons on the kiosk. Paste a monday.com form share link into each one; forms open inside the hub and the kiosk returns home afterwards. Use the arrows to change the order.</p></div>
-        <button type="button" class="btn" id="add-tile">+ Add tile</button>
+        <div><h2>Tiles</h2><p>The buttons on the kiosk. Paste a monday.com form share link into each one; forms open inside the hub and the kiosk returns home afterwards. Tap counts show how often each tile was used.</p></div>
+        <div class="head-actions"><button type="button" class="btn btn--ghost" id="add-group">+ Add group</button><button type="button" class="btn" id="add-tile">+ Add tile</button></div>
       </div>
-      <ul id="tiles-list" class="items frost"></ul>
+      <div id="tiles-lists"></div>
     </section>
 
-    <section id="tab-settings" class="tab" hidden>
-      <div class="tab-head"><div><h2>Settings</h2><p>The note on the kiosk, your logo, how the kiosk looks, and the hub's name and languages. Each section saves on its own.</p></div></div>
+    <!-- Notes -->
+    <section id="tab-notes" class="tab" hidden>
+      <div class="tab-head">
+        <div><h2>Notes</h2><p>Announcements shown beside the greeting on the kiosk and on the screensaver. Give a note dates to schedule it ahead of time; several can show at once, in this order.</p></div>
+        <button type="button" class="btn" id="add-note">+ Add note</button>
+      </div>
+      <ul id="notes-list" class="items frost"></ul>
+    </section>
 
-      <form id="note-form" class="panel frost stack">
-        <h3>Note on the kiosk</h3>
-        <p class="hint">Shown beside the greeting at the top of the kiosk page. Use it for announcements, reminders or safety messages.</p>
-        <div class="grid-2">
-          <label class="check"><input type="checkbox" id="n-active" /> Show the note</label>
-          <label>Style<select id="n-style"><option value="info">Info (blue)</option><option value="important">Important (red)</option><option value="success">Good news (green)</option></select></label>
-          <label>Title (English)<input type="text" id="n-title_en" maxlength="80" placeholder="Safety meeting Friday" /></label>
-          <label>Title (Spanish)<input type="text" id="n-title_es" maxlength="80" /></label>
-          <label>Text (English)<textarea id="n-body_en" maxlength="600" rows="3"></textarea></label>
-          <label>Text (Spanish)<textarea id="n-body_es" maxlength="600" rows="3"></textarea></label>
-          <label>Show until (optional)<input type="date" id="n-until" /><p class="hint">The note hides itself after this day.</p></label>
-        </div>
-        <div class="field-row"><span></span><button type="submit" class="btn">Save note</button></div>
-      </form>
+    <!-- Settings -->
+    <section id="tab-settings" class="tab" hidden>
+      <div class="tab-head"><div><h2>Settings</h2><p>Kiosks, your logo, how the kiosk looks, the hub's name and languages, and backups. Each section saves on its own.</p></div></div>
+
+      <div class="panel frost stack" id="kiosks-panel">
+        <h3>Kiosks</h3>
+        <p class="hint">Every tablet or screen showing the kiosk checks in once a minute. Give each one a name so you can tell them apart; if one goes quiet, check its power and Wi-Fi.</p>
+        <table class="table" id="kiosks-table"><thead><tr><th>Kiosk</th><th>Status</th><th>Screen</th><th>First seen</th><th></th></tr></thead><tbody></tbody></table>
+      </div>
 
       <form id="logo-form" class="panel frost stack">
         <h3>Logo</h3>
-        <p class="hint">Shown in the top bar of the kiosk, on the QR page and here. A PNG or SVG with a transparent background works best; it is shown about 44 px tall. Max 2 MB. If the logo has dark text, set the theme below to <em>Always light</em>, or it will vanish on the dark theme.</p>
+        <p class="hint">Shown in the top bar of the kiosk, on the screensaver, on the QR page and here. A PNG or SVG with a transparent background works best; it is shown about 44 px tall. Max 2 MB. If the logo has dark text, set the theme below to <em>Always light</em>, or it will vanish on the dark theme.</p>
         <div class="logo-row">
           <div class="logo-preview" id="logo-preview"><span class="hint">No logo yet</span></div>
           <div class="stack">
             <input type="file" id="logo-file" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" />
-            <div class="field-row"><button type="submit" class="btn" id="logo-upload">Upload logo</button><button type="button" class="btn btn--danger" id="logo-remove" hidden>Remove logo</button></div>
+            <div class="field-row wrap"><button type="submit" class="btn" id="logo-upload">Upload logo</button><button type="button" class="btn btn--danger" id="logo-remove" hidden>Remove logo</button></div>
           </div>
         </div>
       </form>
@@ -101,16 +105,28 @@
         <div class="grid-2">
           <div>
             <label class="check"><input type="checkbox" id="s-lang-es" /> Offer Spanish (EN / ES switch in the top bar)</label>
-            <label class="check"><input type="checkbox" id="s-showQr" /> Show the "Open on your phone" QR code in the top bar</label>
+            <label class="check"><input type="checkbox" id="s-showQr" /> Show the "Open on your phone" QR code (top bar and screensaver)</label>
           </div>
           <label>Default language<select id="s-defaultLang"><option value="en">English</option><option value="es">Spanish</option></select></label>
         </div>
         <h3>Kiosk</h3>
-        <div class="grid-2">
+        <div class="grid-3">
           <label>Return to home after (seconds)<input type="number" id="s-idleReturnSeconds" min="0" max="3600" /><p class="hint">On a form page, with no taps for this long, the kiosk goes back to the home screen. 0 = never.</p></label>
+          <label>Screensaver after (seconds)<input type="number" id="s-screensaverSeconds" min="0" max="7200" /><p class="hint">On the home screen, with no taps for this long, show the logo, clock, notes and QR code. 0 = never.</p></label>
           <label>Public web address (for the QR code)<input type="url" id="s-publicUrl" placeholder="https://your-hub.up.railway.app" /><p class="hint" id="s-publicUrl-hint"></p></label>
         </div>
         <div class="field-row"><span></span><button type="submit" class="btn">Save settings</button></div>
+      </form>
+
+      <form id="backup-form" class="panel frost stack">
+        <h3>Backup and restore</h3>
+        <p class="hint">The backup is a zip with every tile, group, note, setting, the logo, tap counts and the kiosk list. Keep a copy somewhere safe, for example before big changes. Restoring replaces everything with the zip's contents; the settings from just before are kept on the server.</p>
+        <div class="field-row wrap">
+          <a class="btn btn--ghost" href="/api/admin/backup" id="backup-download" download>⬇ Download backup</a>
+          <span></span>
+          <input type="file" id="restore-file" accept=".zip,application/zip" />
+          <button type="submit" class="btn btn--danger" id="restore-btn">Restore from backup</button>
+        </div>
       </form>
     </section>
   </main>
@@ -140,15 +156,80 @@
             <div class="emoji-row" id="i-emoji"></div>
           </div>
           <div class="stack">
+            <label>Group<select id="i-group"></select></label>
             <label>Corner label<input type="text" id="i-code" maxlength="6" placeholder="01" /></label>
             <label class="check"><input type="checkbox" id="i-active" checked /> Show on the kiosk</label>
           </div>
         </div>
+        <fieldset>
+          <legend>Schedule</legend>
+          <label class="check"><input type="checkbox" id="i-sched-on" /> Only show this tile at certain times</label>
+          <div id="i-sched" class="stack" hidden>
+            <div class="chips" id="i-days"></div>
+            <div class="grid-3">
+              <label>From<input type="time" id="i-start" value="05:00" /></label>
+              <label>Until<input type="time" id="i-end" value="08:00" /></label>
+              <p class="hint">Uses the kiosk's own clock. An end time earlier than the start runs overnight (e.g. 22:00 to 06:00).</p>
+            </div>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Leads only</legend>
+          <label class="check"><input type="checkbox" id="i-pin-on" /> Ask for a PIN before opening</label>
+          <div id="i-pin-box" class="grid-2" hidden>
+            <label><span id="i-pin-label">PIN (4–8 digits)</span><input type="password" id="i-pin" inputmode="numeric" autocomplete="new-password" maxlength="8" /></label>
+            <p class="hint" id="i-pin-hint">The tile shows a lock and a keypad. The link stays hidden from anyone without the PIN; after the right PIN it opens for 15 minutes on that device.</p>
+          </div>
+        </fieldset>
         <p class="dlg-error" id="item-error" hidden></p>
       </div>
       <div class="dlg-foot">
         <button type="button" class="btn btn--danger btn--small" id="item-delete" hidden>Delete</button>
         <div class="right"><button type="button" class="btn btn--ghost" data-close>Cancel</button><button type="submit" class="btn" id="item-save">Save</button></div>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Group editor -->
+  <dialog id="dlg-group">
+    <form method="dialog" id="group-form">
+      <div class="dlg-head"><h3 id="group-title">Add group</h3><button type="button" class="btn btn--ghost btn--small" data-close>Close</button></div>
+      <div class="dlg-body">
+        <p class="hint">Groups put a heading over a set of tiles, e.g. Safety, Time off, Equipment. Tiles without a group are shown first.</p>
+        <div class="grid-2">
+          <label>Name (English)<input type="text" id="g-title_en" maxlength="60" required /></label>
+          <label>Name (Spanish)<input type="text" id="g-title_es" maxlength="60" /></label>
+        </div>
+        <p class="dlg-error" id="group-error" hidden></p>
+      </div>
+      <div class="dlg-foot">
+        <button type="button" class="btn btn--danger btn--small" id="group-delete" hidden>Delete group</button>
+        <div class="right"><button type="button" class="btn btn--ghost" data-close>Cancel</button><button type="submit" class="btn">Save</button></div>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Note editor -->
+  <dialog id="dlg-note">
+    <form method="dialog" id="note-form">
+      <div class="dlg-head"><h3 id="note-title">Add note</h3><button type="button" class="btn btn--ghost btn--small" data-close>Close</button></div>
+      <div class="dlg-body">
+        <div class="grid-2">
+          <label class="check"><input type="checkbox" id="n-active" checked /> Switched on</label>
+          <label>Style<select id="n-style"><option value="info">Info (blue)</option><option value="important">Important (red)</option><option value="success">Good news (green)</option></select></label>
+          <label>Title (English)<input type="text" id="n-title_en" maxlength="80" placeholder="Safety meeting Friday" /></label>
+          <label>Title (Spanish)<input type="text" id="n-title_es" maxlength="80" /></label>
+          <label>Text (English)<textarea id="n-body_en" maxlength="600" rows="3"></textarea></label>
+          <label>Text (Spanish)<textarea id="n-body_es" maxlength="600" rows="3"></textarea></label>
+          <label>Show from (optional)<input type="date" id="n-from" /></label>
+          <label>Show until (optional)<input type="date" id="n-until" /></label>
+        </div>
+        <p class="hint">Leave the dates empty to show the note until you switch it off.</p>
+        <p class="dlg-error" id="note-error" hidden></p>
+      </div>
+      <div class="dlg-foot">
+        <button type="button" class="btn btn--danger btn--small" id="note-delete" hidden>Delete</button>
+        <div class="right"><button type="button" class="btn btn--ghost" data-close>Cancel</button><button type="submit" class="btn">Save note</button></div>
       </div>
     </form>
   </dialog>
