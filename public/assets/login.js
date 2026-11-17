@@ -4,6 +4,7 @@
     wrong: "That username or password isn't right. Please try again.",
     locked: "Too many attempts. Please wait 15 minutes and try again.",
     disabled: "The admin area is turned off because ADMIN_PASSWORD isn't set on the service. Add it in Railway → Variables and redeploy.",
+    cookie: "Your password was right, but this browser didn't keep the sign-in. Allow cookies for this site (or clear its cookies) and try again, or use another browser.",
   };
   var code = q.get("error");
   if (code && messages[code]) {

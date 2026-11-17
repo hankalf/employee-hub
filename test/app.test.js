@@ -41,10 +41,9 @@ function client() {
     if (json !== undefined) { h["Content-Type"] = "application/json"; payload = JSON.stringify(json); }
     if (form) { h["Content-Type"] = "application/x-www-form-urlencoded"; payload = new URLSearchParams(form).toString(); }
     const res = await fetch(base + url, { method, headers: h, body: payload, redirect: "manual" });
-    const set = res.headers.get("set-cookie");
-    if (set && set.includes("hub_admin=")) {
-      const m = /hub_admin=([^;]*)/.exec(set);
-      cookie = m[1] ? "hub_admin=" + m[1] : "";
+    for (const set of res.headers.getSetCookie()) {
+      const m = /^hub_admin=([^;]*)/.exec(set);
+      if (m) cookie = m[1] ? "hub_admin=" + m[1] : "";
     }
     return res;
   }
@@ -55,7 +54,7 @@ async function signIn() {
   const c = client();
   const res = await c.post("/admin/login", { form: { password: ADMIN_PASSWORD } });
   assert.equal(res.status, 302);
-  assert.equal(res.headers.get("location"), "/admin");
+  assert.equal(res.headers.get("location"), "/admin?signedin=1");
   return c;
 }
 
@@ -461,19 +460,44 @@ test("the admin cookie works inside a monday.com frame over HTTPS", async () => 
     headers: { "Content-Type": "application/x-www-form-urlencoded", "X-Forwarded-Proto": proto },
     body: new URLSearchParams({ password: ADMIN_PASSWORD }).toString(),
   });
-  const https = (await login("https")).headers.get("set-cookie");
+  const httpsRes = await login("https");
+  const https = httpsRes.headers.getSetCookie().find((c) => /^hub_admin=[^;]+/.test(c));
   assert.match(https, /hub_admin=/);
+  // Before the new cookie, any older unpartitioned copy is deleted so a stale one can't shadow it.
+  assert.match(httpsRes.headers.getSetCookie()[0], /^hub_admin=;.*Expires=Thu, 01 Jan 1970/);
   assert.match(https, /SameSite=None/);
   assert.match(https, /Secure/);
   assert.match(https, /Partitioned/);
   assert.match(https, /HttpOnly/);
-  const http = (await login("http")).headers.get("set-cookie");
+  const http = (await login("http")).headers.getSetCookie().find((c) => /^hub_admin=[^;]+/.test(c));
   assert.match(http, /SameSite=Lax/);
   assert.doesNotMatch(http, /Partitioned|Secure/);
   // Cross-site writes are still refused without the custom header, even with the cookie
   const cookie = /hub_admin=[^;]*/.exec(https)[0];
   const r = await fetch(base + "/api/admin/tiles", { method: "POST", headers: { Cookie: cookie, "Content-Type": "application/json" }, body: "{}" });
   assert.equal(r.status, 403);
+});
+
+test("signing in works with leftover cookies from the previous version", async () => {
+  const crypto = require("crypto");
+  const secret = fs.readFileSync(path.join(dataDir, "session.key"), "utf8").trim();
+  const key = crypto.createHash("sha256").update("hub-session:" + secret).digest();
+  const sign = (obj) => { const p = Buffer.from(JSON.stringify(obj)).toString("base64url"); return "hub_admin=" + p + "." + crypto.createHmac("sha256", key).update(p).digest("base64url"); };
+  const fingerprint = crypto.createHmac("sha256", key).update("pw:" + ADMIN_PASSWORD).digest("base64url").slice(0, 16);
+  const me = (cookie) => fetch(base + "/api/admin/me", { headers: { Cookie: cookie } }).then((r) => r.status);
+  const oldOwner = sign({ f: fingerprint, e: Date.now() + 3600e3 });   // a session from before named admins
+  const stale = sign({ f: "from-an-old-pass", e: Date.now() + 3600e3 }); // e.g. ADMIN_PASSWORD was changed since
+  const expired = sign({ u: "owner", f: fingerprint, e: Date.now() - 1000 });
+  const fresh = sign({ u: "owner", f: fingerprint, e: Date.now() + 3600e3 });
+  assert.equal(await me(oldOwner), 200, "the previous version's owner session still works");
+  assert.equal(await me(stale), 401);
+  assert.equal(await me(`${stale}; ${fresh}`), 200, "a stale cookie sent first doesn't hide a good one");
+  assert.equal(await me(`${expired}; ${stale}; ${fresh}`), 200);
+  assert.equal(await me("hub_admin=%E0%A4%A; " + fresh), 200, "a garbled cookie is ignored");
+  // When the browser didn't keep the sign-in, /admin says so instead of silently showing the login page again
+  const r = await fetch(base + "/admin?signedin=1", { redirect: "manual", headers: { Cookie: stale } });
+  assert.equal(r.headers.get("location"), "/admin/login?error=cookie");
+  assert.equal((await fetch(base + "/admin", { redirect: "manual" })).headers.get("location"), "/admin/login");
 });
 
 test("FRAME_ANCESTORS can change or turn off framing", async () => {

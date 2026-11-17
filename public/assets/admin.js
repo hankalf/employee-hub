@@ -52,6 +52,7 @@
     try { f.contentWindow.location.reload(); } catch (e) { f.src = "/kiosk?" + Date.now(); }
   }
   var isOwner = function () { return me && me.role === "owner"; };
+  if (/[?&]signedin=1/.test(location.search)) history.replaceState(null, "", "/admin" + location.hash); // tidy the address after signing in
 
   // --- tabs --------------------------------------------------------------------
   var TABS = ["tiles", "notes", "activity", "settings"];

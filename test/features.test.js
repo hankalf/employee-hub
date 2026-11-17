@@ -59,8 +59,7 @@ function client() {
     if (json !== undefined) { h["Content-Type"] = "application/json"; payload = JSON.stringify(json); }
     if (form) { h["Content-Type"] = "application/x-www-form-urlencoded"; payload = new URLSearchParams(form).toString(); }
     const res = await fetch(base + url, { method, headers: h, body: payload, redirect: "manual" });
-    const set = res.headers.get("set-cookie");
-    if (set && set.includes("hub_admin=")) { const m = /hub_admin=([^;]*)/.exec(set); cookie = m[1] ? "hub_admin=" + m[1] : ""; }
+    for (const set of res.headers.getSetCookie()) { const m = /^hub_admin=([^;]*)/.exec(set); if (m) cookie = m[1] ? "hub_admin=" + m[1] : ""; }
     return res;
   }
   return { get: (u, o) => request("GET", u, o), post: (u, o) => request("POST", u, o), put: (u, o) => request("PUT", u, o), del: (u, o) => request("DELETE", u, o) };
@@ -75,7 +74,7 @@ const json = async (r) => ({ status: r.status, body: await r.json() });
 
 test("the owner adds admins; admins sign in, must choose a password, and can't manage admins", async () => {
   const o = await owner();
-  assert.equal((await signIn("admin", OWNER_PASSWORD)).location, "/admin", "the owner can also type the username admin");
+  assert.equal((await signIn("admin", OWNER_PASSWORD)).location, "/admin?signedin=1", "the owner can also type the username admin");
   let r = await json(await o.post("/api/admin/admins", { json: { name: "Jordan Lee", username: "JLee" } }));
   assert.equal(r.status, 201);
   assert.equal(r.body.admin.username, "jlee");
@@ -88,7 +87,7 @@ test("the owner adds admins; admins sign in, must choose a password, and can't m
 
   assert.equal((await signIn("jlee", "wrong-password")).location, "/admin/login?error=wrong&u=jlee");
   const { c: j, location } = await signIn("jlee", temp);
-  assert.equal(location, "/admin");
+  assert.equal(location, "/admin?signedin=1");
   r = await json(await j.get("/api/admin/content"));
   assert.equal(r.status, 403);
   assert.equal(r.body.code, "mustChangePassword");
@@ -114,7 +113,7 @@ test("the owner adds admins; admins sign in, must choose a password, and can't m
   assert.equal((await j2.get("/api/admin/me")).status, 200);
   r = await json(await o.post(`/api/admin/admins/${id}/reset`, {}));
   assert.equal((await j2.get("/api/admin/me")).status, 401, "a reset signs them out everywhere");
-  assert.equal((await signIn("jlee", r.body.tempPassword)).location, "/admin");
+  assert.equal((await signIn("jlee", r.body.tempPassword)).location, "/admin?signedin=1");
 
   // Everything above is in the activity log, with names
   const log = (await json(await o.get("/api/admin/activity"))).body;
@@ -349,7 +348,7 @@ test("automatic backups: kept on the server, downloadable, restorable by the own
   const c = (await json(await o.get("/api/admin/content"))).body;
   assert.ok(!c.tiles.some((t) => t.title.en === "After the backup"));
   assert.ok((await json(await o.get("/api/admin/admins"))).body.some((a) => a.username === "sam"));
-  assert.equal((await signIn("sam", "sams-password-1")).location, "/admin", "restored logins keep their passwords");
+  assert.equal((await signIn("sam", "sams-password-1")).location, "/admin?signedin=1", "restored logins keep their passwords");
   const log = (await json(await o.get("/api/admin/activity"))).body;
   assert.ok(log.some((e) => e.action === "Restored backup" && e.detail === name));
 });
