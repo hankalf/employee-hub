@@ -15,16 +15,9 @@ No database: settings are a JSON file on a Railway Volume. No build step.
 
 ## Deploying on Railway
 
-This app lives in the `employee-hub` folder of the repository, so the Railway service needs to be pointed at that folder.
-
-1. **Create the service.** In Railway, go to *New Project → Deploy from GitHub repo* and pick this repository (or add a new service to an existing project).
-2. **Point it at this folder.** Service → *Settings*:
-   - *Source → Root Directory*: `/employee-hub`
-   - *Config as Code → Railway Config File*: `/employee-hub/railway.json` (this path is from the repository root, it does not follow the root directory)
-   - Optional: *Source → Watch Paths*: `/employee-hub/**` so only changes to the hub redeploy it.
-   Railway detects Node and runs `npm start`.
-3. **Add a Volume.** Right-click the service → *Attach Volume* → mount path **`/data`**. Without it, your tiles, panels and settings are wiped on every redeploy.
-4. **Set variables.** Service → *Variables*:
+1. **Create the service.** In Railway, go to *New Project → Deploy from GitHub repo* and pick this repository. Railway detects Node and runs `npm start`; `railway.json` adds the health check and restart policy.
+2. **Add a Volume.** Right-click the service → *Attach Volume* → mount path **`/data`**. Without it, your tiles, panels and settings are wiped on every redeploy.
+3. **Set variables.** Service → *Variables*:
 
    | Variable | Required | What it does |
    |---|---|---|
@@ -34,8 +27,8 @@ This app lives in the `employee-hub` folder of the repository, so the Railway se
    | `PUBLIC_URL` | optional | The hub's public address, used for the QR code. Defaults to the address the page is opened on; you can also set it in *Settings*. |
    | `MONDAY_CACHE_SECONDS` | optional | How long board data is reused before asking monday.com again (default 45). |
 
-5. **Get a web address.** Service → *Settings → Networking → Generate Domain*, or add your own domain.
-6. Open `https://<your-domain>/admin`, sign in, and paste your form links into the tiles.
+4. **Get a web address.** Service → *Settings → Networking → Generate Domain*, or add your own domain.
+5. Open `https://<your-domain>/admin`, sign in, and paste your form links into the tiles.
 
 ### The monday.com API token
 
@@ -94,14 +87,13 @@ Every title and description you enter has an English and a Spanish box; Spanish 
 ## Running locally
 
 ```bash
-cd employee-hub
 npm install
 ADMIN_PASSWORD=secret123 MONDAY_API_TOKEN=... npm start
 # → http://localhost:3000   admin at http://localhost:3000/admin
 npm test                    # automated tests (uses a fake monday.com, no token needed)
 ```
 
-Local data is stored in `employee-hub/storage` (git-ignored).
+Local data is stored in `./storage` (git-ignored). GitHub Actions runs `npm test` on every push.
 
 ## What's on the Volume
 
