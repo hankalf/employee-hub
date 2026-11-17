@@ -178,14 +178,15 @@ main { position: relative; max-width: 100rem; margin: 0 auto; padding: 1.5rem; }
 .btn--secondary:hover { background: var(--primary); color: var(--primary-fg); }
 
 /* Open (embedded form) --------------------------------------------------- */
-body.open-page { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+body.open-page { height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
 .openbar { flex: none; display: flex; align-items: center; gap: .75rem; height: 3.75rem; padding: 0 1rem; border-bottom: 1px solid var(--border); background: var(--muted); }
 .openbar .back { display: inline-flex; align-items: center; gap: .4rem; min-height: 2.75rem; padding: 0 1rem; border-radius: 999px; background: var(--card); text-decoration: none; font-size: .9rem; font-weight: 500; box-shadow: var(--shadow); }
 .openbar .title { flex: 1; min-width: 0; font-size: 1rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .openbar .newtab { display: inline-flex; align-items: center; min-height: 2.75rem; padding: 0 1rem; border-radius: 999px; font-size: .8rem; color: var(--muted-fg); text-decoration: none; }
 .openbar .newtab:hover { color: var(--fg); }
 .openbar .countdown { font-size: .75rem; color: var(--muted-fg); font-variant-numeric: tabular-nums; }
-.frame-wrap { flex: 1; min-height: 0; position: relative; background: var(--card); }
+.frame-wrap { flex: 1 1 auto; min-height: 0; position: relative; background: var(--card); }
+@supports not (height: 100dvh) { .frame-wrap { min-height: calc(100vh - 3.75rem); } }
 .frame-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .frame-wrap .frame-msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 2rem; text-align: center; color: var(--muted-fg); }
 .frame-wrap .frame-msg--hint { align-items: flex-end; padding: 0 0 .5rem; font-size: .75rem; pointer-events: none; }

@@ -33,7 +33,7 @@
     <section id="tab-tiles" class="tab">
       <div class="tab-head">
         <div><h2>Tiles</h2><p>The buttons on the kiosk. Paste a monday.com form share link into each one; forms open inside the hub and the kiosk returns home afterwards. Tap counts show how often each tile was used.</p></div>
-        <div class="head-actions"><button type="button" class="btn btn--ghost" id="add-group">+ Add group</button><button type="button" class="btn" id="add-tile">+ Add tile</button></div>
+        <div class="head-actions"><button type="button" class="btn btn--ghost" id="check-links" title="Ask monday.com again whether each form can be shown inside the hub">↻ Check links</button><button type="button" class="btn btn--ghost" id="add-group">+ Add group</button><button type="button" class="btn" id="add-tile">+ Add tile</button></div>
       </div>
       <div id="tiles-lists"></div>
     </section>
@@ -142,7 +142,17 @@
           <label>Description (English)<input type="text" id="i-description_en" maxlength="200" /></label>
           <label>Description (Spanish)<input type="text" id="i-description_es" maxlength="200" /></label>
         </div>
-        <label>Link<input type="text" id="i-url" placeholder="https://forms.monday.com/forms/…" inputmode="url" autocomplete="off" /><p class="hint" id="i-url-hint"></p></label>
+        <div>
+          <div class="link-head">
+            <label for="i-url">Form link</label>
+            <div class="seg" role="group" aria-label="What are you pasting?">
+              <button type="button" data-paste="link" aria-pressed="true">Share link</button>
+              <button type="button" data-paste="embed" aria-pressed="false">Embed code</button>
+            </div>
+          </div>
+          <textarea id="i-url" rows="1" spellcheck="false" autocomplete="off" placeholder="https://forms.monday.com/forms/…"></textarea>
+          <p class="hint" id="i-url-hint"></p>
+        </div>
         <div>
           <span class="hint">Open</span>
           <div class="choice-row">

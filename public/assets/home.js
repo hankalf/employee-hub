@@ -50,7 +50,8 @@
   function tileHref(t) {
     if (!t.hasLink) return null;
     if (t.locked) return "#";
-    return t.open === "tab" ? t.url : "/open/t/" + encodeURIComponent(t.id);
+    if (t.open === "tab" || t.fullPage) return t.url; // fullPage: the form can't be shown inside the hub
+    return "/open/t/" + encodeURIComponent(t.id);
   }
 
   function tileEl(t) {

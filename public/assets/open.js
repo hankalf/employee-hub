@@ -24,7 +24,7 @@
     // PIN-protected tiles don't reveal their link until the PIN token is checked.
     if (item.locked) {
       return H.fetchJson("/api/tiles/" + encodeURIComponent(id) + "/link?k=" + encodeURIComponent(token))
-        .then(function (link) { show(hub, { title: item.title, url: link.url, embedUrl: link.embedUrl }); })
+        .then(function (link) { show(hub, { title: item.title, url: link.url, embedUrl: link.embedUrl, fullPage: link.fullPage }); })
         .catch(function (err) { showMessage(err.status === 403 ? H.t("pinExpired") : H.t("couldNotLoad")); });
     }
     show(hub, item);
@@ -34,10 +34,12 @@
 
   function show(hub, item) {
     if (!item.url) return showMessage(H.t("linkMissing"));
+    // The server found that this page refuses to be shown inside another site: open it on its own.
+    if (item.fullPage) { location.replace(item.url); return; }
 
     var newtab = $("newtab");
     newtab.href = item.url;
-    newtab.textContent = H.t("openNewTab") + " ↗";
+    newtab.textContent = H.t("openFull") + " ↗";
     newtab.hidden = false;
 
     var frame = $("frame");

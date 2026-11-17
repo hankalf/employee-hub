@@ -3,8 +3,10 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const jsQR = require("jsqr");
-const { normalizeUrl, describeLink } = require("../lib/links");
+const { normalizeUrl, describeLink, extractFromEmbedCode } = require("../lib/links");
 const { encodeQr, toSvg } = require("../lib/qr");
+const { createChecker, framingAllowed, sourceMatches } = require("../lib/formcheck");
+const { fakeWeb } = require("./fake-web");
 const { validateTile, validateSettings, validateNote, validateAppearance, validateSchedule, verifyTilePin, normalizeContent, ValidationError, DEFAULT_APPEARANCE } = require("../lib/store");
 
 test("normalizeUrl adds https and rejects non-web links", () => {
@@ -142,4 +144,54 @@ test("appearance validates colours and options", () => {
   assert.throws(() => validateAppearance({ accent: "red" }, a), /colour/);
   assert.throws(() => validateAppearance({ tileColumns: "9" }, a), /Tiles per row/);
   assert.throws(() => validateAppearance({ theme: "sepia" }, a), /Theme/);
+});
+
+test("short monday links are recognised", () => {
+  assert.equal(describeLink("https://wkf.ms/3AbC9xY").kind, "form-short");
+});
+
+test("framing headers are read like a browser would", () => {
+  const origin = "https://hub.up.railway.app";
+  const H = (o) => new Headers(o);
+  assert.equal(framingAllowed(H({}), origin).allowed, true);
+  assert.equal(framingAllowed(H({ "x-frame-options": "DENY" }), origin).allowed, false);
+  assert.equal(framingAllowed(H({ "x-frame-options": "SAMEORIGIN" }), origin).allowed, false);
+  assert.equal(framingAllowed(H({ "x-frame-options": "SAMEORIGIN", "content-security-policy": "frame-ancestors *" }), origin).allowed, true, "CSP wins over X-Frame-Options");
+  assert.equal(framingAllowed(H({ "content-security-policy": "default-src 'self'; frame-ancestors 'self' https://*.monday.com" }), origin).allowed, false);
+  assert.equal(framingAllowed(H({ "content-security-policy": "frame-ancestors https:" }), origin).allowed, true);
+  assert.equal(framingAllowed(H({ "content-security-policy": "frame-ancestors 'none'" }), origin).allowed, false);
+  assert.ok(sourceMatches("*.up.railway.app", origin));
+  assert.ok(sourceMatches("https://hub.up.railway.app", origin));
+  assert.ok(!sourceMatches("http://hub.up.railway.app", origin));
+  assert.ok(!sourceMatches("other.example", origin));
+});
+
+test("the checker follows short links, caches, and copes with failures", async () => {
+  const web = fakeWeb();
+  const checker = createChecker({ fetchImpl: web.fetchImpl });
+  const a = await checker.check("https://wkf.ms/abc", { origin: "https://hub.example" });
+  assert.equal(a.status, "ok");
+  assert.equal(a.resolvedUrl, "https://forms.monday.com/forms/abc123?r=use1");
+  assert.equal(a.embedUrl, "https://forms.monday.com/forms/embed/abc123?r=use1");
+  const n = web.calls.length;
+  await checker.check("https://wkf.ms/abc", { origin: "https://hub.example" });
+  assert.equal(web.calls.length, n, "results are cached");
+  await checker.check("https://wkf.ms/abc", { origin: "https://hub.example", fresh: true });
+  assert.ok(web.calls.length > n);
+  assert.equal((await checker.check("https://wkf.ms/old")).status, "notfound");
+  assert.equal((await checker.check("https://forms.monday.com/forms/login1?r=use1")).status, "login");
+  const down = await checker.check("https://unreachable.invalid/x");
+  assert.equal(down.status, "unknown");
+  assert.match(down.detail, /couldn't be reached/);
+});
+
+test("monday embed code is accepted and the form address taken out of it", () => {
+  const code = '<iframe src="https://forms.monday.com/forms/embed/9f8e7d6c?r=use1" width="650" height="500" style="border: 0; box-shadow: 5px 5px 56px 0px rgba(0,0,0,0.25);"></iframe>';
+  assert.equal(normalizeUrl(code), "https://forms.monday.com/forms/embed/9f8e7d6c?r=use1");
+  assert.equal(describeLink(normalizeUrl(code)).kind, "form");
+  assert.equal(normalizeUrl("<iframe width='650'\n  src='https://forms.monday.com/forms/embed/abc?r=use1&amp;lang=es'></iframe>"), "https://forms.monday.com/forms/embed/abc?r=use1&lang=es");
+  assert.equal(normalizeUrl('<iframe src="//forms.monday.com/forms/embed/abc?r=use1"></iframe>'), "https://forms.monday.com/forms/embed/abc?r=use1");
+  assert.equal(extractFromEmbedCode("https://wkf.ms/abc"), "https://wkf.ms/abc");
+  assert.throws(() => normalizeUrl("<div>no form here</div>"), /embed code/);
+  assert.throws(() => normalizeUrl('<iframe src="javascript:alert(1)"></iframe>'), /http/);
 });

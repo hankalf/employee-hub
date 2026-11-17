@@ -8,6 +8,7 @@ const os = require("os");
 const path = require("path");
 const AdmZip = require("adm-zip");
 const { createApp } = require("../lib/app");
+const { fakeWeb } = require("./fake-web");
 
 const ADMIN_PASSWORD = "hub-test-pass";
 let server, base, dataDir, ctx;
@@ -16,7 +17,7 @@ before(async () => {
   dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "hub-test-"));
   const origLog = console.log;
   console.log = () => {};
-  const created = await createApp({ dataDir, adminPassword: ADMIN_PASSWORD, sessionSecret: "", publicUrl: "" });
+  const created = await createApp({ dataDir, adminPassword: ADMIN_PASSWORD, sessionSecret: "", publicUrl: "", fetchImpl: fakeWeb().fetchImpl, backgroundChecks: false });
   ctx = created.ctx;
   const app = created.app;
   console.log = origLog;
@@ -321,6 +322,80 @@ test("backup and restore round-trip everything", async () => {
   await c.del("/api/admin/logo");
 });
 
+test("form links are checked: short links resolve, blocked forms open full screen", async () => {
+  const c = await signIn();
+  const add = async (title, url, open = "embed") => (await c.post("/api/admin/tiles", { json: { title, url, open } })).json();
+
+  const short = await add("Short", "https://wkf.ms/abc");
+  assert.equal(short.resolvedUrl, "https://forms.monday.com/forms/abc123?r=use1");
+  assert.equal(short.embedCheck.status, "ok");
+  const blocked = await add("Blocked", "https://wkf.ms/blk");
+  assert.equal(blocked.embedCheck.status, "blocked");
+  assert.match(blocked.embedCheck.detail, /X-Frame-Options: SAMEORIGIN/);
+  const login = await add("Login", "https://forms.monday.com/forms/login1?r=use1");
+  assert.equal(login.embedCheck.status, "login");
+  const gone = await add("Gone", "https://forms.monday.com/forms/gone1?r=use1");
+  assert.equal(gone.embedCheck.status, "notfound");
+  const slow = await add("Slow", "https://forms.monday.com/forms/slow1?r=use1");
+  assert.equal(slow.embedCheck.status, "unknown");
+  const board = await add("Board", "https://acme.monday.com/boards/123/views/4");
+  assert.equal(board.embedCheck.status, "login");
+  const site = await add("Site", "https://example.com/page");
+  assert.equal(site.embedCheck.status, "blocked");
+  const ok = await add("OK site", "https://docs.example.org/form");
+  assert.equal(ok.embedCheck.status, "ok");
+
+  const hub = await (await fetch(base + "/api/hub")).json();
+  const pub = (id) => hub.tiles.find((t) => t.id === id);
+  assert.equal(pub(short.id).embedUrl, "https://forms.monday.com/forms/embed/abc123?r=use1", "short links embed the real form");
+  assert.equal(pub(short.id).fullPage, false);
+  assert.equal(pub(blocked.id).fullPage, true);
+  assert.equal(pub(blocked.id).url, "https://forms.monday.com/forms/blocked1?r=use1");
+  assert.equal(pub(login.id).fullPage, true);
+  assert.equal(pub(board.id).fullPage, true);
+  assert.equal(pub(site.id).fullPage, true);
+  assert.equal(pub(slow.id).fullPage, false, "unknown results still try the iframe");
+  assert.equal(pub(gone.id).fullPage, false);
+
+  // Changing the link clears the old check and checks the new one
+  let r = await c.put(`/api/admin/tiles/${blocked.id}`, { json: { url: "https://wkf.ms/abc" } });
+  const fixed = await r.json();
+  assert.equal(fixed.embedCheck.status, "ok");
+  // Editing something else keeps the result without asking monday again
+  r = await c.put(`/api/admin/tiles/${fixed.id}`, { json: { description: { en: "x" } } });
+  assert.equal((await r.json()).embedCheck.checkedAt, fixed.embedCheck.checkedAt);
+
+  // Check all, and the link-info endpoint used while typing
+  r = await c.post("/api/admin/tiles/check", { json: {} });
+  const all = await r.json();
+  assert.equal(all.find((t) => t.id === gone.id).embedCheck.status, "notfound");
+  assert.ok(!JSON.stringify(all).includes("pinHash"));
+  const info = await (await c.get("/api/admin/link-info?check=1&url=" + encodeURIComponent("wkf.ms/abc"))).json();
+  assert.equal(info.kind, "form-short");
+  assert.equal(info.check.status, "ok");
+  assert.equal(info.check.resolvedUrl, "https://forms.monday.com/forms/abc123?r=use1");
+
+  // A locked tile reports fullPage through the PIN-protected link endpoint, never through /api/hub
+  await c.put(`/api/admin/tiles/${login.id}`, { json: { pin: "1357" } });
+  const unlocked = await (await fetch(base + `/api/tiles/${login.id}/unlock`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pin: "1357" }) })).json();
+  const link = await (await fetch(base + `/api/tiles/${login.id}/link?k=` + encodeURIComponent(unlocked.token))).json();
+  assert.equal(link.fullPage, true);
+
+  // Pasting monday's embed code saves the form address inside it
+  const embedded = await add("Embedded", '<iframe src="https://forms.monday.com/forms/embed/abc123?r=use1" width="650" height="500" style="border: 0;"></iframe>');
+  assert.equal(embedded.url, "https://forms.monday.com/forms/embed/abc123?r=use1");
+  assert.equal(embedded.embedCheck.status, "ok");
+  const hub2 = await (await fetch(base + "/api/hub")).json();
+  assert.equal(hub2.tiles.find((t) => t.id === embedded.id).embedUrl, "https://forms.monday.com/forms/embed/abc123?r=use1");
+  const codeInfo = await (await c.get("/api/admin/link-info?check=1&url=" + encodeURIComponent('<iframe src="https://forms.monday.com/forms/embed/abc123?r=use1"></iframe>'))).json();
+  assert.equal(codeInfo.url, "https://forms.monday.com/forms/embed/abc123?r=use1");
+  const badCode = await c.post("/api/admin/tiles", { json: { title: "Bad", url: "<div>oops</div>" } });
+  assert.equal(badCode.status, 400);
+  assert.match((await badCode.json()).error, /embed code/);
+
+  for (const t of [short, blocked, login, gone, slow, board, site, ok, embedded]) await c.del(`/api/admin/tiles/${t.id}`);
+});
+
 test("logo upload, serving and removal", async () => {
   const c = await signIn();
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
@@ -376,7 +451,7 @@ test("bad JSON and a server without ADMIN_PASSWORD are handled", async () => {
   const r = await c.post("/api/admin/tiles", { headers: { "Content-Type": "application/json" }, body: "{oops" });
   assert.equal(r.status, 400);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "hub-test2-"));
-  const { app } = await createApp({ dataDir: dir, adminPassword: "", sessionSecret: "", publicUrl: "https://hub.example" });
+  const { app } = await createApp({ dataDir: dir, adminPassword: "", sessionSecret: "", publicUrl: "https://hub.example", fetchImpl: fakeWeb().fetchImpl, backgroundChecks: false });
   const srv = await new Promise((resolve) => { const s = app.listen(0, () => resolve(s)); });
   const b = `http://127.0.0.1:${srv.address().port}`;
   assert.equal((await (await fetch(b + "/api/hub")).json()).publicUrl, "https://hub.example");

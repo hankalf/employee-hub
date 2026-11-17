@@ -44,10 +44,17 @@ Built with Node.js and Express. No database: settings and the logo live on a Rai
 
 ### Tiles (monday.com forms)
 
-1. In monday.com, open the board's form (or create one with *WorkForms*). Click **Share** and copy the link, which looks like `https://forms.monday.com/forms/…?r=use1`. The form's sharing must be set to anyone with the link.
-2. In *Admin → Tiles*, add or edit a tile and paste the link. The admin area recognises form links and opens them inside the hub, switching to monday's embed address automatically.
-3. Give the tile an icon (pick an emoji), a short description and, optionally, a corner label. Use the arrows to order the tiles.
-4. Tiles without a link show as **Coming soon**. Switch a tile off to hide it entirely.
+1. In monday.com, open the board's form (or create one with *WorkForms*) and click **Share form**. Either:
+   - **Share link**: copy the link (`https://forms.monday.com/forms/…?r=use1`, or the short `https://wkf.ms/…`), or
+   - **Embed code**: choose *Embed* and copy the whole `<iframe …>` code.
+
+   The form must accept submissions from anyone with the link, not only people signed in to monday.com.
+2. In *Admin → Tiles*, add or edit a tile, choose *Share link* or *Embed code* above the link box, and paste. Embed code is replaced by the form address inside it. Short links are followed to the real form, and every form is shown inside the hub through monday's embed address.
+3. When you save, the server asks monday.com whether the form can be shown inside the hub, and the tile gets a label: *shows inside the hub*, *opens full screen* (the site refuses to be embedded, so the kiosk opens it on its own page), *needs a monday login* or *form not found*. **Check links** asks again for every tile, for example after you change a form's sharing settings.
+4. Give the tile an icon (pick an emoji), a short description and, optionally, a corner label. Use the arrows to order the tiles.
+5. Tiles without a link show as **Coming soon**. Switch a tile off to hide it entirely.
+
+If a form shows a blank box on the kiosk, tap **Open full screen** at the top of the form page, then use **Check links** in the admin to see what monday.com reports for it.
 
 Any web address works too: a Google Form, a SharePoint page, a monday board or dashboard (those need a monday login, so choose *Open in a new tab*).
 
@@ -130,7 +137,8 @@ lib/app.js                Express app: kiosk pages, public API, admin login and 
 lib/store.js              content.json: validation for tiles, groups, notes, schedules, PINs, appearance and settings
 lib/stats.js              Tap counts and kiosk check-ins
 lib/backup.js             Backup zip and restore
-lib/links.js              Link clean-up; turns form share links into embed links
+lib/links.js              Link clean-up; reads embed code; turns form share links into embed links
+lib/formcheck.js          Asks the form's site whether it can be shown inside the hub (follows short links)
 lib/auth.js               Admin session cookie, PIN unlock tokens, CSRF check, sign-in and PIN rate limiting
 lib/qr.js                 QR code encoder (no dependencies)
 public/                   Kiosk pages (index, open, qr) and shared CSS/JS; admin CSS/JS

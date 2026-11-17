@@ -83,33 +83,77 @@
     if (!url) return { text: "No link yet — shows as \"Coming soon\"", cls: "tag--warn" };
     try {
       var h = new URL(url).hostname;
-      if (h === "forms.monday.com") return { text: "monday.com form", cls: "tag--ok" };
+      if (h === "forms.monday.com" || h === "wkf.ms") return { text: "monday.com form", cls: "tag--ok" };
       if (h === "view.monday.com") return { text: "monday.com public board", cls: "tag--ok" };
       if (h === "monday.com" || /\.monday\.com$/.test(h)) return { text: "monday.com board", cls: "" };
       return { text: h, cls: "" };
     } catch (e) { return { text: url, cls: "" }; }
   }
   var hintTimer;
-  var DEFAULT_LINK_HINT = "Paste the form's share link (monday.com → form → Share → copy link), or any web address. Leave blank for \"Coming soon\".";
+  var PASTE_HELP = {
+    link: { hint: "In monday.com open the form, click Share form and copy the link (forms.monday.com/… or wkf.ms/…). Any other web address works too. Leave blank for \"Coming soon\".", placeholder: "https://forms.monday.com/forms/…", rows: 1 },
+    embed: { hint: "In monday.com open the form, click Share form → Embed and copy the code. Paste the whole <iframe …> code here; the hub takes the form address out of it.", placeholder: "<iframe src=\"https://forms.monday.com/forms/embed/…\" …></iframe>", rows: 4 },
+  };
+  var pasteMode = "link";
+  var DEFAULT_LINK_HINT = PASTE_HELP.link.hint;
+  function setPasteMode(mode, keepHint) {
+    pasteMode = mode;
+    document.querySelectorAll("[data-paste]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.paste === mode)); });
+    var help = PASTE_HELP[mode];
+    $("i-url").placeholder = help.placeholder;
+    $("i-url").rows = help.rows;
+    DEFAULT_LINK_HINT = help.hint;
+    if (!keepHint && !$("i-url").value.trim()) { $("i-url-hint").textContent = help.hint; $("i-url-hint").className = "hint"; }
+  }
+  document.querySelectorAll("[data-paste]").forEach(function (b) {
+    b.addEventListener("click", function () { setPasteMode(b.dataset.paste); $("i-url").focus(); });
+  });
   function liveLinkHint(input, hint, setOpen) {
     clearTimeout(hintTimer);
     var v = input.value.trim();
     if (!v) { hint.textContent = DEFAULT_LINK_HINT; hint.className = "hint"; return; }
     hintTimer = setTimeout(function () {
-      api("GET", "/api/admin/link-info?url=" + encodeURIComponent(v)).then(function (info) {
+      var texts = {
+        form: "monday.com form.",
+        "form-short": "monday.com form (short link).",
+        "public-board": "monday.com public board view.",
+        monday: "This is a link inside your monday.com account, which needs a monday sign-in. For a form, open it in monday.com, click Share form and copy that link instead (it starts with forms.monday.com or wkf.ms).",
+        web: "Web link (" + v.replace(/^https?:\/\//, "").split("/")[0] + ").",
+      };
+      hint.textContent = "Checking the link with monday.com…";
+      hint.className = "hint";
+      api("GET", "/api/admin/link-info?check=1&url=" + encodeURIComponent(v)).then(function (info) {
+        if (input.value.trim() !== v) return; // the admin kept typing
         if (!info.ok) { hint.textContent = info.error; hint.className = "hint hint--warn"; return; }
-        var texts = {
-          form: "monday.com form — opens inside the hub; the kiosk returns home automatically afterwards.",
-          "public-board": "monday.com public board view — can open inside the hub.",
-          monday: "A monday.com board, dashboard or doc. These need a monday login, so open them in a new tab.",
-          web: "Web link (" + info.host + "). If the site refuses to be embedded, choose \"In a new tab\".",
-        };
-        hint.textContent = texts[info.kind] || info.url;
-        hint.className = "hint " + (info.kind === "form" ? "hint--ok" : "");
+        var parts = [texts[info.kind] || ""];
+        // Embed code: show the form address that was found in it, so it's clear what will be saved.
+        if (/^\s*</.test(v) || /\bsrc\s*=/i.test(v)) {
+          input.value = info.url;
+          input.rows = 1;
+          parts.unshift("Embed code recognised.");
+        }
+        if (info.check && info.check.resolvedUrl) parts.push("Short link goes to " + info.check.resolvedUrl.replace(/^https:\/\//, "") + ".");
+        if (info.kind !== "monday" && info.check) parts.push(checkText(info.check, "hint"));
+        hint.textContent = parts.filter(Boolean).join(" ");
+        var st = info.check && info.check.status;
+        hint.className = "hint " + (st === "ok" ? "hint--ok" : st === "blocked" || st === "login" || st === "notfound" || info.kind === "monday" ? "hint--warn" : "");
         if (setOpen && info.kind === "monday") setOpen("tab");
-        if (setOpen && info.kind === "form") setOpen("embed");
-      }).catch(function () {});
-    }, 350);
+        if (setOpen && (info.kind === "form" || info.kind === "form-short")) setOpen("embed");
+      }).catch(function () { hint.textContent = texts.web; });
+    }, 500);
+  }
+  /** Plain-language result of the server's check of a link. */
+  var CHECK_TEXT = {
+    ok: { tag: "✓ shows inside the hub", cls: "tag--ok", hint: "✓ Checked: this form can be shown inside the hub." },
+    blocked: { tag: "⚠ opens full screen", cls: "tag--warn", hint: "This page won't let itself be shown inside another site ({x}). The kiosk will open it full screen instead; people use the browser's back button to return." },
+    login: { tag: "⚠ needs a monday login", cls: "tag--warn", hint: "This link asks for a monday.com sign-in, so people at the kiosk can't fill it in. In monday.com, open the form's settings and allow anyone with the link to submit it, then copy the link from Share form." },
+    notfound: { tag: "⚠ form not found", cls: "tag--warn", hint: "monday.com says this form doesn't exist ({x}). It may have been deleted, or the link was copied incompletely." },
+    unknown: { tag: "? not checked", cls: "", hint: "The server couldn't check this link ({x}). It will be tried inside the hub." },
+  };
+  function checkText(check, field) {
+    if (!check) return "";
+    var c = CHECK_TEXT[check.status] || CHECK_TEXT.unknown;
+    return c[field].replace("{x}", check.detail || "no answer");
   }
   function switchBtn(on, label, onToggle) {
     var b = el("button", { type: "button", class: "switch", role: "switch", "aria-checked": String(on), "aria-label": label });
@@ -145,7 +189,11 @@
     var k = linkKind(t.url);
     var u = stats.usage[t.id] || { last30: 0, total: 0, lastAt: "" };
     var tags = [el("span", { class: "tag " + k.cls, text: k.text })];
-    if (t.url) tags.push(el("span", { class: "tag", text: t.open === "embed" ? "opens inside the hub" : "opens in a new tab" }));
+    if (t.url && t.open === "tab") tags.push(el("span", { class: "tag", text: "opens in a new tab" }));
+    else if (t.url && t.embedCheck) {
+      var c = CHECK_TEXT[t.embedCheck.status] || CHECK_TEXT.unknown;
+      tags.push(el("span", { class: "tag " + c.cls, text: c.tag, title: checkText(t.embedCheck, "hint") + " Checked " + ago(t.embedCheck.checkedAt) + "." }));
+    } else if (t.url) tags.push(el("span", { class: "tag", text: "opens inside the hub" }));
     if (t.schedule) tags.push(el("span", { class: "tag tag--accent", text: "🕒 " + scheduleText(t.schedule) }));
     if (t.hasPin) tags.push(el("span", { class: "tag tag--accent", text: "🔒 PIN" }));
     var actions = el("div", { class: "actions" }, [
@@ -213,6 +261,8 @@
     $("item-title").textContent = item ? "Edit tile" : "Add tile";
     setBi("i-title", item && item.title); setBi("i-description", item && item.description);
     $("i-url").value = item ? item.url : "";
+    setPasteMode(item && /\/forms\/embed\//.test(item.url) ? "embed" : "link", true);
+    $("i-url").rows = 1;
     $("i-icon").value = item ? item.icon : "📋";
     $("i-code").value = item && item.code ? item.code : String(content.tiles.length + 1).padStart(2, "0");
     $("i-active").checked = item ? item.active : true;
@@ -239,7 +289,12 @@
     liveLinkHint($("i-url"), $("i-url-hint"), null);
     dlgItem.showModal();
   }
-  $("i-url").addEventListener("input", function () { liveLinkHint($("i-url"), $("i-url-hint"), setOpenMode); });
+  $("i-url").addEventListener("input", function () {
+    var v = $("i-url").value;
+    if (/^\s*</.test(v) && pasteMode !== "embed") setPasteMode("embed", true); // embed code pasted into "Share link"
+    liveLinkHint($("i-url"), $("i-url-hint"), setOpenMode);
+  });
+  $("i-url").addEventListener("keydown", function (ev) { if (ev.key === "Enter" && pasteMode === "link") ev.preventDefault(); });
   $("i-icon").addEventListener("input", function () { emojiRow($("i-emoji"), $("i-icon")); });
   $("i-sched-on").addEventListener("change", function () { $("i-sched").hidden = !this.checked; });
   $("i-pin-on").addEventListener("change", function () { $("i-pin-box").hidden = !this.checked; if (this.checked) $("i-pin").focus(); });
@@ -264,8 +319,12 @@
       body.clearPin = true;
     }
     $("item-save").disabled = true;
-    api(item ? "PUT" : "POST", "/api/admin/tiles" + (item ? "/" + item.id : ""), body).then(function () {
-      dlgItem.close(); toast("Saved"); return reload();
+    api(item ? "PUT" : "POST", "/api/admin/tiles" + (item ? "/" + item.id : ""), body).then(function (saved) {
+      dlgItem.close();
+      var st = saved && saved.open === "embed" && saved.embedCheck && saved.embedCheck.status;
+      if (st === "blocked" || st === "login" || st === "notfound") toast("Saved, but: " + checkText(saved.embedCheck, "hint"), true);
+      else toast("Saved");
+      return reload();
     }).catch(function (e) { err.textContent = e.message; err.hidden = false; })
       .finally(function () { $("item-save").disabled = false; });
   });
@@ -274,6 +333,15 @@
     api("DELETE", "/api/admin/tiles/" + editing.tile.id).then(function () { dlgItem.close(); toast("Deleted"); return reload(); }).catch(fail);
   });
   $("add-tile").addEventListener("click", function () { openTileEditor(null); });
+  $("check-links").addEventListener("click", function () {
+    var b = $("check-links");
+    b.disabled = true; b.textContent = "Checking…";
+    api("POST", "/api/admin/tiles/check", {}).then(function (tiles) {
+      var bad = tiles.filter(function (t) { return t.open === "embed" && t.embedCheck && ["blocked", "login", "notfound"].indexOf(t.embedCheck.status) >= 0; });
+      toast(bad.length ? bad.length + (bad.length === 1 ? " tile needs" : " tiles need") + " attention — see the orange labels." : "All links checked.", bad.length > 0);
+      return reload();
+    }).catch(fail).finally(function () { b.disabled = false; b.textContent = "↻ Check links"; });
+  });
 
   // Group editor
   var dlgGroup = $("dlg-group");
