@@ -13,11 +13,20 @@
     <a class="back" href="/kiosk"><span aria-hidden="true">←</span> <span id="back-label">Back to hub</span></a>
     <div id="title" class="title"></div>
     <span id="countdown" class="countdown" hidden></span>
+    <button type="button" id="phone-btn" class="phone-btn" hidden>📱 <span id="phone-label"></span></button>
     <a id="newtab" class="newtab" href="#" hidden></a>
   </header>
   <div class="frame-wrap">
     <div id="frame-msg" class="frame-msg" hidden></div>
     <iframe id="frame" title="" hidden allow="camera; microphone; clipboard-write" referrerpolicy="strict-origin-when-cross-origin"></iframe>
+  </div>
+  <div id="phone-overlay" class="phone-overlay" hidden>
+    <div class="phone-card">
+      <img id="phone-qr" alt="" />
+      <strong id="phone-title"></strong>
+      <p id="phone-body"></p>
+      <button type="button" class="btn btn--secondary" id="phone-close"></button>
+    </div>
   </div>
   <div id="idle" class="idle-overlay" hidden>
     <div class="idle-card frost"><strong id="idle-title"></strong><span id="idle-sub"></span></div>

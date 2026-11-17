@@ -11,10 +11,13 @@
   if (!token) { try { token = sessionStorage.getItem("hub-unlock-" + id) || ""; } catch (e) { /* ignore */ } }
 
   H.startHeartbeat();
-  H.fetchJson("/api/hub").then(function (hub) {
+  H.fetchJson("/api/hub?device=" + encodeURIComponent(H.deviceId())).then(function (hub) {
     H.resolveLang(hub.settings);
     H.applyAppearance(hub.appearance);
+    H.applyKioskMode(hub.settings, hub.device);
+    H.applyLayout(H.resolveLayout(hub));
     var item = hub.tiles.filter(function (x) { return x.id === id; })[0];
+    if (item && item.phoneQr) setUpPhoneQr(item);
     document.title = H.pick(hub.settings.hubName) || "Employee Hub";
     $("back-label").textContent = H.t("backToHub");
     if (!item) return showMessage(H.t("notFound"));
@@ -64,6 +67,22 @@
     }, 8000);
 
     startIdleTimer(hub.settings.idleReturnSeconds);
+  }
+
+  /** "On your phone" button: a big QR code of this form, so people can finish it on their own phone. */
+  function setUpPhoneQr(item) {
+    var btn = $("phone-btn"), overlay = $("phone-overlay");
+    $("phone-label").textContent = H.t("onPhone");
+    btn.hidden = false;
+    btn.addEventListener("click", function () {
+      $("phone-qr").src = "/qr.svg?tile=" + encodeURIComponent(item.id);
+      $("phone-qr").alt = H.t("phoneTitle");
+      $("phone-title").textContent = H.t("phoneTitle");
+      $("phone-body").textContent = H.t("phoneBody");
+      $("phone-close").textContent = H.t("close");
+      overlay.hidden = false;
+    });
+    overlay.addEventListener("click", function () { overlay.hidden = true; });
   }
 
   function showMessage(text) {

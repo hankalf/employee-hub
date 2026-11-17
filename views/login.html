@@ -16,12 +16,15 @@
     <p id="notice" class="notice" hidden></p>
     <p id="error" class="alert-box" hidden></p>
     <form method="post" action="/admin/login">
-      <label>Admin password
-        <input type="password" name="password" autocomplete="current-password" required autofocus />
+      <label>Username
+        <input type="text" name="username" id="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="admin" />
+      </label>
+      <label>Password
+        <input type="password" name="password" id="password" autocomplete="current-password" required />
       </label>
       <button class="btn" type="submit">Sign in</button>
     </form>
-    <p class="muted small">The password is the <code>ADMIN_PASSWORD</code> variable on the Railway service. <a href="/kiosk">Back to the kiosk</a></p>
+    <p class="muted small">Owner: username <code>admin</code> (or leave it blank) and the <code>ADMIN_PASSWORD</code> from Railway. Everyone else: the login the owner gave you. <a href="/kiosk">Back to the kiosk</a></p>
   </main>
   <script src="/assets/login.js"></script>
 </body>

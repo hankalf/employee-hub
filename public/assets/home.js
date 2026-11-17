@@ -110,7 +110,7 @@
     return "/open/t/" + encodeURIComponent(t.id);
   }
 
-  function tileEl(t) {
+  function tileEl(t, number) {
     var href = tileHref(t);
     // Inside a monday.com frame, a form that can't be framed must open in a new tab: replacing our frame wouldn't help.
     var newTab = href && !t.locked && (t.open === "tab" || (t.fullPage && H.framed));
@@ -119,7 +119,9 @@
     var corner = !href ? H.el("span", { class: "badge", text: H.t("comingSoon") })
       : t.locked ? H.el("span", { class: "badge", text: "🔒 " + H.t("leadsOnly") })
         : hub.appearance.showCodes !== false ? H.el("span", { class: "tile-code", text: t.code || "" }) : null;
-    a.appendChild(H.el("div", { class: "tile-top" }, [H.el("span", { class: "tile-icon", "aria-hidden": "true", text: H.icon(t.icon) }), corner]));
+    a.appendChild(H.el("div", { class: "tile-top" }, [H.iconEl(t.icon, "tile-icon"), corner]));
+    // Number shown in the list / scanner layouts; pressing that number key opens the tile.
+    if (number && href) { a.appendChild(H.el("span", { class: "tile-key", "aria-hidden": "true", text: String(number) })); a.setAttribute("data-key", String(number)); }
     a.appendChild(H.el("div", null, [
       H.el("h2", null, [H.pick(t.title), H.el("span", { class: "arrow", "aria-hidden": "true", text: "↗" })]),
       H.pick(t.description) ? H.el("p", { text: H.pick(t.description) }) : null,
@@ -140,12 +142,16 @@
       return;
     }
     var groups = [{ id: "", title: null }].concat(hub.groups || []);
+    var n = 0;
     groups.forEach(function (g) {
       var tiles = visible.filter(function (t) { return (t.groupId || "") === g.id; });
       if (!tiles.length) return;
       if (g.title) box.appendChild(H.el("h2", { class: "group-title", text: H.pick(g.title) }));
       var grid = H.el("section", { class: "tiles" });
-      tiles.forEach(function (t) { grid.appendChild(tileEl(t)); });
+      tiles.forEach(function (t) {
+        var num = tileHref(t) ? ++n : 0; // only tiles that open get a number
+        grid.appendChild(tileEl(t, num && num <= 9 ? num : 0));
+      });
       box.appendChild(grid);
     });
   }
@@ -232,12 +238,23 @@
   }
   ["pointerdown", "touchstart", "keydown", "mousemove", "scroll"].forEach(function (ev) { window.addEventListener(ev, resetSaver, { passive: true }); });
   setInterval(function () {
-    if (saverDeadline && Date.now() > saverDeadline && pinDialog.open === false) $("saver").hidden = false;
+    // No screensaver on handheld scanners: they're carried around, not left on a wall.
+    if (saverDeadline && Date.now() > saverDeadline && pinDialog.open === false && layout !== "scanner") $("saver").hidden = false;
   }, 1000);
 
+  // List and scanner layouts: number keys 1–9 open the matching tool (handy on scanners with a keypad).
+  document.addEventListener("keydown", function (ev) {
+    if (layout === "tiles" || pinDialog.open || ev.ctrlKey || ev.metaKey || ev.altKey || !/^[1-9]$/.test(ev.key)) return;
+    var a = document.querySelector('#tiles [data-key="' + ev.key + '"]');
+    if (a) { ev.preventDefault(); a.click(); }
+  });
+
+  var layout = "tiles";
   function render() {
     H.resolveLang(hub.settings);
     H.applyAppearance(hub.appearance);
+    H.applyKioskMode(hub.settings, hub.device);
+    layout = H.applyLayout(H.resolveLayout(hub));
     renderHeader();
     renderLayout();
     renderClock();
@@ -247,8 +264,12 @@
     armSaver();
   }
 
+  var firstBuild = null;
   function loadHub() {
-    return H.fetchJson("/api/hub").then(function (data) {
+    return H.fetchJson("/api/hub?device=" + encodeURIComponent(H.deviceId())).then(function (data) {
+      // A new version was deployed: reload to pick up the new kiosk code (not while someone is typing a PIN).
+      if (firstBuild && data.build && data.build !== firstBuild && !pinDialog.open) { location.reload(); return; }
+      firstBuild = firstBuild || data.build;
       var json = JSON.stringify(data);
       if (json === hubJson) return;
       hubJson = json;
@@ -258,6 +279,7 @@
   }
 
   loadHub().catch(function () { $("greeting").textContent = H.t("couldNotLoad"); });
+  H.detectScanner(function () { if (hub) render(); });
   H.startHeartbeat();
   setInterval(function () { if (hub) { renderClock(); renderNotes(); renderTiles(); } }, 60000); // schedules and note dates tick over
   setInterval(function () { if (hub) renderClock(); }, 10000);

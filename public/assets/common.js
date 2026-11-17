@@ -16,6 +16,7 @@
       leadsOnly: "Leads only", pinFor: "Enter the PIN for {x}", pinWrong: "Incorrect PIN. Try again.",
       pinLocked: "Too many tries. Please wait 15 minutes.", pinExpired: "Please enter the PIN again.", cancel: "Cancel", open: "Open",
       tapToStart: "Tap anywhere to start",
+      onPhone: "On your phone", phoneTitle: "Fill this in on your phone", phoneBody: "Scan the code with your phone's camera to open this form there and free up the kiosk.", close: "Close",
     },
     es: {
       openOnPhone: "Abrir en su teléfono", switchLang: "Switch to English",
@@ -30,6 +31,7 @@
       leadsOnly: "Solo líderes", pinFor: "Ingrese el PIN de {x}", pinWrong: "PIN incorrecto. Intente de nuevo.",
       pinLocked: "Demasiados intentos. Espere 15 minutos.", pinExpired: "Ingrese el PIN de nuevo.", cancel: "Cancelar", open: "Abrir",
       tapToStart: "Toque en cualquier lugar para comenzar",
+      onPhone: "En su teléfono", phoneTitle: "Llénelo en su teléfono", phoneBody: "Escanee el código con la cámara de su teléfono para abrir este formulario ahí y dejar libre el quiosco.", close: "Cerrar",
     },
   };
 
@@ -174,8 +176,61 @@
     }
     return id;
   }
+  // --- Zebra handheld scanners -------------------------------------------------------
+  // Zebra models: TC21/TC26, TC52/TC57/TC58, TC72/TC77, TC8300, MC2200/MC3300/MC9300, EC50/EC55, ET40/ET45, WT6300, CC600…
+  var ZEBRA_RE = /\b(?:TC[1-9]\d(?:\d{2})?|MC[2-9]\d{1,3}|EC[3-5]\d|ET[4-8]\d|WT6\d{3}|CC6\d{2,3}|PS20|HC[25]0)[A-Za-z]{0,3}\b|Zebra|EnterpriseBrowser/;
+  var scannerInfo = (function () {
+    var cached = null;
+    try { cached = JSON.parse(localStorage.getItem("hub-scanner") || "null"); } catch (e) { /* ignore */ }
+    var m = ZEBRA_RE.exec(navigator.userAgent);
+    if (m) return { scanner: true, model: m[0] };
+    return cached && typeof cached.scanner === "boolean" ? cached : { scanner: false, model: "" };
+  })();
+  /**
+   * Recent Chrome hides the device model in the user agent ("Android 10; K"), so ask for it through
+   * User-Agent Client Hints. Calls back with true when the answer changed what we thought.
+   */
+  function detectScanner(onChange) {
+    var uad = navigator.userAgentData;
+    if (!uad || !uad.getHighEntropyValues) return;
+    uad.getHighEntropyValues(["model"]).then(function (v) {
+      var model = String((v && v.model) || "");
+      var next = { scanner: ZEBRA_RE.test(model) || ZEBRA_RE.test(navigator.userAgent), model: model || scannerInfo.model };
+      var changed = next.scanner !== scannerInfo.scanner || next.model !== scannerInfo.model;
+      scannerInfo = next;
+      try { localStorage.setItem("hub-scanner", JSON.stringify(next)); } catch (e) { /* ignore */ }
+      if (changed && onChange) onChange();
+    }).catch(function () {});
+  }
+
+  // ?layout=scanner|list|tiles on the address forces a layout on this device (remembered); ?layout=auto clears it.
+  (function rememberLayoutParam() {
+    var p = new URLSearchParams(location.search).get("layout");
+    if (!p) return;
+    try {
+      if (p === "auto") localStorage.removeItem("hub-layout");
+      else if (["tiles", "list", "scanner"].indexOf(p) >= 0) localStorage.setItem("hub-layout", p);
+    } catch (e) { /* ignore */ }
+  })();
+
+  /** Which layout this device uses: address override > admin's choice for this kiosk > Zebra detection > Appearance. */
+  function resolveLayout(hub) {
+    var forced = "";
+    try { forced = localStorage.getItem("hub-layout") || ""; } catch (e) { /* ignore */ }
+    if (["tiles", "list", "scanner"].indexOf(forced) >= 0) return forced;
+    var dev = hub.device && hub.device.layout;
+    if (["tiles", "list", "scanner"].indexOf(dev) >= 0) return dev;
+    if (hub.settings.scannerMode !== "off" && scannerInfo.scanner) return "scanner";
+    return (hub.appearance && hub.appearance.tileLayout) || "tiles";
+  }
+  function applyLayout(layout) {
+    var root = document.documentElement;
+    ["tiles", "list", "scanner"].forEach(function (l) { root.classList.toggle("layout-" + l, l === layout); });
+    return layout;
+  }
+
   function heartbeat() {
-    var body = JSON.stringify({ deviceId: deviceId(), screen: window.innerWidth + "x" + window.innerHeight, path: location.pathname });
+    var body = JSON.stringify({ deviceId: deviceId(), screen: window.innerWidth + "x" + window.innerHeight, path: location.pathname, model: scannerInfo.model, scanner: scannerInfo.scanner });
     fetch("/api/heartbeat", { method: "POST", headers: { "Content-Type": "text/plain" }, body: body, keepalive: true }).catch(function () {});
   }
   function startHeartbeat() {
@@ -183,8 +238,51 @@
     setInterval(heartbeat, 60000);
   }
   function countTap(id) {
-    fetch("/api/tap/" + encodeURIComponent(id), { method: "POST", keepalive: true }).catch(function () {});
+    fetch("/api/tap/" + encodeURIComponent(id) + "?h=" + new Date().getHours(), { method: "POST", keepalive: true }).catch(function () {});
   }
+
+  /** A tile icon: an uploaded image ("img:icon-ab12.png") or an emoji. */
+  function iconEl(icon, cls) {
+    var s = String(icon || "");
+    if (/^img:icon-[a-z0-9-]+\.(png|jpe?g|gif|webp|svg)$/.test(s)) {
+      return el("span", { class: cls + " has-img", "aria-hidden": "true" }, [el("img", { src: "/img/" + s.slice(4), alt: "", draggable: "false" })]);
+    }
+    return el("span", { class: cls, "aria-hidden": "true", text: ICONS[s] || s || "🔗" });
+  }
+
+  var phone = /iPhone|iPod|Android.*Mobile|Windows Phone|Mobile.*Firefox/i.test(navigator.userAgent);
+
+  /**
+   * Kiosk mode for wall tablets and computers: keep the screen awake and block the gestures people
+   * trigger by accident (pinch-zoom, double-tap zoom, text selection, long-press menus, dragging images).
+   */
+  var kioskOn = false;
+  var wakeLock = null;
+  function requestWake() {
+    if (!kioskOn || document.visibilityState !== "visible" || !("wakeLock" in navigator) || wakeLock) return;
+    navigator.wakeLock.request("screen").then(function (l) {
+      wakeLock = l;
+      l.addEventListener("release", function () { wakeLock = null; });
+    }).catch(function () { /* not allowed yet (e.g. needs a tap first) */ });
+  }
+  function block(ev) { if (kioskOn) ev.preventDefault(); }
+  function applyKioskMode(settings, device) {
+    var mode = (settings && settings.lockdown) || "tablets";
+    var on = mode === "named" ? Boolean(device && device.named) : mode === "tablets" ? !phone : false;
+    kioskOn = on;
+    document.documentElement.classList.toggle("kiosk-lock", on);
+    if (on) requestWake();
+    else if (wakeLock) { wakeLock.release().catch(function () {}); wakeLock = null; }
+  }
+  document.addEventListener("visibilitychange", requestWake);
+  document.addEventListener("pointerdown", requestWake, { passive: true });
+  document.addEventListener("contextmenu", block);
+  document.addEventListener("dragstart", block);
+  document.addEventListener("gesturestart", block);   // Safari pinch
+  document.addEventListener("gesturechange", block);
+  document.addEventListener("touchmove", function (ev) { if (kioskOn && ev.touches && ev.touches.length > 1) ev.preventDefault(); }, { passive: false });
+  document.addEventListener("wheel", function (ev) { if (kioskOn && ev.ctrlKey) ev.preventDefault(); }, { passive: false }); // trackpad / ctrl+wheel zoom
+  document.addEventListener("keydown", function (ev) { if (kioskOn && (ev.ctrlKey || ev.metaKey) && /^[-+=0]$/.test(ev.key)) ev.preventDefault(); });
 
   /** "07:44" (12-hour, as XX:XX), "19:44" (24-hour), optionally with AM/PM. Returns { hm, ampm }. */
   function clockParts(date, mode, withAmPm) {
@@ -199,5 +297,7 @@
 
   window.Hub = { framed: framed, clockParts: clockParts, t: t, pick: pick, icon: icon, noteIcon: function (s) { return NOTE_ICONS[s] || NOTE_ICONS.info; }, lang: lang, setLang: setLang, resolveLang: resolveLang,
     locale: locale, el: el, fetchJson: fetchJson, applyAppearance: applyAppearance, renderBrand: renderBrand, renderLangToggle: renderLangToggle, today: today,
-    currentNotes: currentNotes, tileAvailable: tileAvailable, startHeartbeat: startHeartbeat, countTap: countTap };
+    currentNotes: currentNotes, tileAvailable: tileAvailable, startHeartbeat: startHeartbeat, countTap: countTap,
+    deviceId: deviceId, iconEl: iconEl, applyKioskMode: applyKioskMode, isPhone: phone,
+    detectScanner: detectScanner, resolveLayout: resolveLayout, applyLayout: applyLayout, scanner: function () { return scannerInfo; } };
 })();

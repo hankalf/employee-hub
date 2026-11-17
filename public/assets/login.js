@@ -1,7 +1,7 @@
 (function () {
   var q = new URLSearchParams(location.search);
   var messages = {
-    wrong: "That password isn't right. Please try again.",
+    wrong: "That username or password isn't right. Please try again.",
     locked: "Too many attempts. Please wait 15 minutes and try again.",
     disabled: "The admin area is turned off because ADMIN_PASSWORD isn't set on the service. Add it in Railway → Variables and redeploy.",
   };
@@ -11,6 +11,8 @@
     el.textContent = messages[code];
     el.hidden = false;
   }
+  var u = document.getElementById("username");
+  if (q.get("u")) { u.value = q.get("u"); document.getElementById("password").focus(); } else { u.focus(); }
   if (q.get("signedout")) {
     var n = document.getElementById("notice");
     n.textContent = "You've been signed out.";

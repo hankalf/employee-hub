@@ -192,6 +192,83 @@ main { position: relative; max-width: 100rem; margin: 0 auto; padding: 1.5rem; }
 .saver-hint { margin: 0; font-size: 1rem; color: var(--muted-fg); animation: pulse 2.4s ease-in-out infinite; }
 @keyframes pulse { 0%, 100% { opacity: .5; } 50% { opacity: 1; } }
 
+/* List layout: tools as rows (icon · title and description · arrow) instead of tiles */
+.tile-key { display: none; }
+.layout-list .tiles, .layout-scanner .tiles { grid-template-columns: repeat(auto-fill, minmax(min(100%, 26rem), 1fr)); gap: .6rem; }
+.layout-list .tile, .layout-scanner .tile {
+  display: grid; grid-template-columns: auto auto 1fr auto; grid-template-areas: "key icon text corner"; align-items: center;
+  column-gap: 1rem; row-gap: 0; min-height: 0; padding: .9rem 1.1rem; border-radius: var(--radius-md);
+}
+.layout-list .tile-top, .layout-scanner .tile-top { display: contents; }
+.layout-list .tile-icon, .layout-scanner .tile-icon { grid-area: icon; width: 3rem; height: 3rem; font-size: 1.5rem; border-radius: .8rem; }
+.layout-list .tile > div:not(.tile-top), .layout-scanner .tile > div:not(.tile-top) { grid-area: text; min-width: 0; }
+.layout-list .tile-code, .layout-list .tile .badge, .layout-scanner .tile .badge { grid-area: corner; justify-self: end; }
+.layout-list .tile h2 { font-size: 1.15rem; }
+.layout-list .tile p { margin-top: .1rem; font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layout-list .tile:hover { transform: none; }
+.layout-list .tile-key, .layout-scanner .tile-key {
+  grid-area: key; display: flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem;
+  border-radius: 50%; background: var(--muted); color: var(--muted-fg); font-size: .8rem; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.layout-list .tile:not([data-key]) { grid-template-areas: ". icon text corner"; }
+.layout-list .group-title, .layout-scanner .group-title { margin: 1.25rem 0 .5rem; font-size: .8rem; }
+
+/* Scanner layout: Zebra handhelds and other small screens. Compact, big tap targets, keypad friendly. */
+.layout-scanner { --header-h: 3.25rem; }
+.layout-scanner body { font-size: 15px; }
+.layout-scanner .glow { display: none; }
+.layout-scanner .topbar-inner { grid-template-columns: auto minmax(0, 1fr) auto; padding: 0 .75rem; gap: .5rem; }
+.layout-scanner .top-clock { font-size: 1.15rem; }
+.layout-scanner .brand .brand-name { display: none; }
+.layout-scanner .brand .brand-logo { height: 2rem; max-width: 6rem; }
+.layout-scanner .topbar .mini-qr { display: none; }
+.layout-scanner .lang-toggle button { min-height: 2rem; min-width: 2.25rem; padding: 0 .5rem; }
+.layout-scanner main { padding: .75rem; }
+.layout-scanner .hero { gap: .5rem; margin-bottom: .75rem; }
+.layout-scanner .greeting h1 { font-size: 1.5rem; font-weight: 400; letter-spacing: -.02em; }
+.layout-scanner .hero-name { font-size: 1.1rem; }
+.layout-scanner .hero-name--big { font-size: 1.5rem; }
+.layout-scanner .date { font-size: .8rem; }
+.layout-scanner .intro, .layout-scanner .intro-bottom-slot { display: none; }
+.layout-scanner .notes { flex-basis: 100%; gap: .4rem; }
+.layout-scanner .note { padding: .6rem .8rem; gap: .6rem; border-left-width: 4px; border-radius: var(--radius-sm); }
+.layout-scanner .note-icon { font-size: 1.1rem; }
+.layout-scanner .note strong { font-size: .95rem; }
+.layout-scanner .note p { font-size: .8rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.layout-scanner .tiles { grid-template-columns: 1fr; gap: .4rem; }
+.layout-scanner .tile { min-height: 3.75rem; padding: .55rem .75rem; column-gap: .7rem; border-radius: var(--radius-sm); }
+.layout-scanner .tile-icon { width: 2.5rem; height: 2.5rem; font-size: 1.3rem; border-radius: .6rem; }
+.layout-scanner .tile h2 { font-size: 1.05rem; font-weight: 500; }
+.layout-scanner .tile h2 .arrow { display: none; }
+.layout-scanner .tile p { margin: 0; font-size: .78rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layout-scanner .tile-code { display: none; }
+.layout-scanner .tile:hover { transform: none; }
+.layout-scanner .tile:focus-visible, .layout-list .tile:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.layout-scanner .tile-key { width: 1.6rem; height: 1.6rem; background: var(--primary); color: var(--primary-fg); }
+.layout-scanner .kiosk-foot { padding: 0 .75rem .75rem; }
+/* Form page on a scanner: slim bar, no "on your phone" button (it already is the handheld) */
+.layout-scanner .openbar { height: 3rem; padding: 0 .5rem; gap: .4rem; }
+.layout-scanner .openbar .back { min-height: 2.25rem; padding: 0 .75rem; font-size: .85rem; }
+.layout-scanner .openbar .title { font-size: .9rem; }
+.layout-scanner .openbar .newtab, .layout-scanner .phone-btn { display: none; }
+
+/* Kiosk lockdown (tablets / computers): no selection, callouts or double-tap zoom */
+.kiosk-lock, .kiosk-lock body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
+.kiosk-lock img { -webkit-user-drag: none; }
+.kiosk-lock input, .kiosk-lock textarea { -webkit-user-select: text; user-select: text; }
+
+/* Uploaded tile icons */
+.tile-icon.has-img, .qlink-icon.has-img { background: transparent; overflow: hidden; }
+.tile-icon.has-img img { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+/* "Fill it in on your phone" on the form page */
+.phone-btn { display: inline-flex; align-items: center; gap: .4rem; min-height: 2.75rem; padding: 0 1rem; border: 0; border-radius: 999px; background: var(--card); font-size: .85rem; font-weight: 500; box-shadow: var(--shadow); }
+.phone-overlay { position: fixed; inset: 0; z-index: 55; display: flex; align-items: center; justify-content: center; padding: 1rem; background: rgba(0, 0, 0, .55); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.phone-card { display: flex; flex-direction: column; align-items: center; gap: .75rem; max-width: 22rem; padding: 1.75rem; border-radius: var(--radius); background: var(--card); text-align: center; }
+.phone-card img { width: 16rem; height: 16rem; border-radius: .75rem; background: #fff; }
+.phone-card strong { font-size: 1.25rem; font-weight: 500; letter-spacing: -.01em; }
+.phone-card p { margin: 0; color: var(--muted-fg); font-size: .9rem; }
+
 .kiosk-foot { max-width: 100rem; margin: 0 auto; padding: 0 1.5rem 1rem; text-align: right; }
 .kiosk-foot a { font-size: .7rem; color: var(--muted-fg); opacity: .6; text-decoration: none; }
 .kiosk-foot a:hover { opacity: 1; text-decoration: underline; }

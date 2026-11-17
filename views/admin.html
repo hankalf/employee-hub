@@ -17,6 +17,7 @@
         <button type="button" id="kiosk-status" class="kiosk-status" title="Kiosks that checked in during the last 3 minutes"><span class="dot"></span><span id="kiosk-status-text">Kiosks…</span></button>
         <a href="/kiosk" target="_blank" rel="noopener">Open the kiosk ↗</a>
         <a href="/qr" target="_blank" rel="noopener">QR code ↗</a>
+        <button type="button" id="me-btn" class="me-btn" title="Your account"></button>
         <form method="post" action="/admin/logout"><button type="submit">Sign out</button></form>
       </nav>
     </div>
@@ -26,6 +27,7 @@
     <div class="tabs" role="tablist">
       <button type="button" role="tab" data-tab="tiles" aria-selected="true">Tiles</button>
       <button type="button" role="tab" data-tab="notes" aria-selected="false">Notes</button>
+      <button type="button" role="tab" data-tab="activity" aria-selected="false">Activity</button>
       <button type="button" role="tab" data-tab="settings" aria-selected="false">Settings</button>
     </div>
 
@@ -35,6 +37,8 @@
         <div><h2>Tiles</h2><p>The buttons on the kiosk. Paste a monday.com form share link into each one; forms open inside the hub and the kiosk returns home afterwards. Tap counts show how often each tile was used.</p></div>
         <div class="head-actions"><button type="button" class="btn btn--ghost" id="check-links" title="Ask monday.com again whether each form can be shown inside the hub">↻ Check links</button><button type="button" class="btn btn--ghost" id="add-group">+ Add group</button><button type="button" class="btn" id="add-tile">+ Add tile</button></div>
       </div>
+      <div id="tile-problems" class="alert-box" hidden></div>
+      <p class="hint drag-hint">Drag ⠿ to reorder (or focus it and use the arrow keys). To move a tile to another group, edit the tile.</p>
       <div id="tiles-lists"></div>
     </section>
 
@@ -47,14 +51,71 @@
       <ul id="notes-list" class="items frost"></ul>
     </section>
 
+    <!-- Activity -->
+    <section id="tab-activity" class="tab" hidden>
+      <div class="tab-head"><div><h2>Activity</h2><p>How the kiosk is used, and who changed what in the admin area.</p></div></div>
+      <div class="panel frost stack">
+        <div class="panel-head">
+          <h3 id="usage-title">Taps by hour of day · last 30 days</h3>
+          <div class="head-actions">
+            <label class="inline">Tile <select id="usage-tile"></select></label>
+            <a class="btn btn--ghost btn--small" href="/api/admin/stats.csv" download>⬇ Taps (CSV)</a>
+          </div>
+        </div>
+        <div id="usage-chart" class="hour-chart" role="group" aria-labelledby="usage-title"></div>
+        <p class="hint">Hours are each kiosk's local time. Taps before this version only count toward the daily totals, not the hour chart.</p>
+        <table class="table" id="usage-table"><thead><tr><th>Tile</th><th class="num">Last 7 days</th><th class="num">Last 30 days</th><th class="num">All time</th><th>Last tap</th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="panel frost stack">
+        <div class="panel-head">
+          <h3>Admin activity</h3>
+          <div class="head-actions">
+            <input type="search" id="activity-filter" placeholder="Filter by name, action or detail" aria-label="Filter activity" />
+            <a class="btn btn--ghost btn--small" href="/api/admin/activity.csv" download>⬇ Activity (CSV)</a>
+          </div>
+        </div>
+        <table class="table" id="activity-table"><thead><tr><th>When</th><th>Who</th><th>What</th><th>Details</th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+
     <!-- Settings -->
     <section id="tab-settings" class="tab" hidden>
       <div class="tab-head"><div><h2>Settings</h2><p>Kiosks, your logo, how the kiosk looks, the hub's name and languages, and backups. Each section saves on its own.</p></div></div>
 
       <div class="panel frost stack" id="kiosks-panel">
         <h3>Kiosks</h3>
-        <p class="hint">Every tablet or screen showing the kiosk checks in once a minute. Give each one a name so you can tell them apart; if one goes quiet, check its power and Wi-Fi.</p>
-        <table class="table" id="kiosks-table"><thead><tr><th>Kiosk</th><th>Status</th><th>Screen</th><th>First seen</th><th></th></tr></thead><tbody></tbody></table>
+        <p class="hint">Every tablet, screen, scanner or phone showing the kiosk checks in once a minute. Name your kiosks so you can tell them apart, choose which tiles each one shows and its layout, and tick <em>Alert</em> to be told when one goes quiet. Phones that only scanned the QR code drop off the list after 30 days.</p>
+        <table class="table" id="kiosks-table"><thead><tr><th>Kiosk</th><th>Status</th><th>Shows</th><th>Layout</th><th>Alert</th><th></th></tr></thead><tbody></tbody></table>
+      </div>
+
+      <form id="alerts-form" class="panel frost stack">
+        <h3>Alerts</h3>
+        <p class="hint">Get told when a kiosk with <em>Alert</em> ticked stops checking in, and when the daily link check finds a form that stopped working. Send alerts as a new item on a monday.com board, to a webhook (Slack, Microsoft Teams, or Zapier/Make to turn it into an email), or both.</p>
+        <div class="grid-3">
+          <label class="check"><input type="checkbox" id="al-enabled" /> Send alerts</label>
+          <label>Alert when a kiosk is quiet for (minutes)<input type="number" id="al-offlineMinutes" min="3" max="1440" /></label>
+          <div>
+            <label class="check"><input type="checkbox" id="al-notifyRecovery" /> Also say when it's back online</label>
+            <label class="check"><input type="checkbox" id="al-linkProblems" /> Alert about form links that stop working</label>
+          </div>
+        </div>
+        <div class="grid-2">
+          <label>monday.com board (link or number)<input type="text" id="al-mondayBoardId" placeholder="https://yourteam.monday.com/boards/1234567890" /><p class="hint" id="al-monday-hint"></p></label>
+          <label>Webhook address<input type="url" id="al-webhookUrl" placeholder="https://hooks.slack.com/services/…" /><p class="hint">Kept private: it's never sent to the kiosk.</p></label>
+        </div>
+        <div class="field-row"><span></span><button type="button" class="btn btn--ghost" id="al-test">Send a test alert</button><button type="submit" class="btn">Save alerts</button></div>
+      </form>
+
+      <div class="panel frost stack" id="admins-panel" hidden>
+        <div class="panel-head"><h3>Admins</h3><button type="button" class="btn btn--small" id="add-admin">+ Add admin</button></div>
+        <p class="hint">You're the owner: the <code>admin</code> login whose password is <code>ADMIN_PASSWORD</code> on Railway. Give everyone else their own login, so the activity log shows who changed what. Admins can change everything except other admins and restoring backups.</p>
+        <table class="table" id="admins-table"><thead><tr><th>Name</th><th>Username</th><th>Last sign-in</th><th>Active</th><th></th></tr></thead><tbody></tbody></table>
+      </div>
+
+      <div class="panel frost stack" id="account-panel" hidden>
+        <h3>Your account</h3>
+        <p class="hint" id="account-text"></p>
+        <div class="field-row"><span></span><button type="button" class="btn btn--ghost" id="change-password">Change your password</button></div>
       </div>
 
       <form id="logo-form" class="panel frost stack">
@@ -80,6 +141,7 @@
           <label>Corners<select id="a-radius"><option value="round">Round</option><option value="soft">Soft</option><option value="square">Square</option></select></label>
           <label>Font<select id="a-font"><option value="system">Modern (system)</option><option value="rounded">Rounded</option><option value="serif">Classic (serif)</option></select></label>
           <label>Tile size<select id="a-tileSize"><option value="large">Large</option><option value="medium">Medium</option><option value="compact">Compact</option></select></label>
+          <label>Tools shown as<select id="a-tileLayout"><option value="tiles">Tiles</option><option value="list">A list</option></select></label>
           <label>Tiles per row<select id="a-tileColumns"><option value="auto">Automatic (fit the screen)</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option></select></label>
         </div>
         <div class="grid-3">
@@ -147,18 +209,33 @@
           <label>Screensaver after (seconds)<input type="number" id="s-screensaverSeconds" min="0" max="7200" /><p class="hint">On the home screen, with no taps for this long, show the logo, clock, notes and QR code. 0 = never.</p></label>
           <label>Public web address (for the QR code)<input type="url" id="s-publicUrl" placeholder="https://your-hub.up.railway.app" /><p class="hint" id="s-publicUrl-hint"></p></label>
         </div>
+        <div class="grid-3">
+          <label>Kiosk lockdown<select id="s-lockdown">
+            <option value="tablets">Tablets and computers (not phones)</option>
+            <option value="named">Only kiosks named under Kiosks</option>
+            <option value="off">Off</option>
+          </select><p class="hint">Keeps the screen awake and blocks pinch-zoom, text selection and long-press menus. Phones are left alone so people can zoom forms.</p></label>
+          <label>Zebra scanners<select id="s-scannerMode">
+            <option value="auto">Detect them and use the scanner layout</option>
+            <option value="off">Treat them like any other device</option>
+          </select><p class="hint">The scanner layout is a compact numbered list for small handheld screens; keys 1–9 open a tool. Force it on any device with <code>/kiosk?layout=scanner</code>, or set a kiosk's layout under Kiosks.</p></label>
+          <label class="check"><input type="checkbox" id="s-formQr" /> Show "On your phone" on form pages (a QR code of that form)</label>
+        </div>
         <div class="field-row"><span></span><button type="submit" class="btn">Save settings</button></div>
       </form>
 
       <form id="backup-form" class="panel frost stack">
         <h3>Backup and restore</h3>
-        <p class="hint">The backup is a zip with every tile, group, note, setting, the logo, tap counts and the kiosk list. Keep a copy somewhere safe, for example before big changes. Restoring replaces everything with the zip's contents; the settings from just before are kept on the server.</p>
+        <p class="hint">A backup is a zip with every tile, group, note and setting, the logo and tile images, tap counts, the kiosk list and admin logins (passwords are stored scrambled). One is made automatically every night and the last 7 are kept on the server. Restoring replaces everything; the content from just before is kept on the server too.</p>
+        <table class="table" id="backups-table"><thead><tr><th>Automatic backup</th><th class="num">Size</th><th></th></tr></thead><tbody></tbody></table>
         <div class="field-row wrap">
-          <a class="btn btn--ghost" href="/api/admin/backup" id="backup-download" download>⬇ Download backup</a>
+          <button type="button" class="btn btn--ghost" id="backup-now">Make a backup now</button>
+          <a class="btn btn--ghost" href="/api/admin/backup" id="backup-download" download>⬇ Download a backup</a>
           <span></span>
-          <input type="file" id="restore-file" accept=".zip,application/zip" />
-          <button type="submit" class="btn btn--danger" id="restore-btn">Restore from backup</button>
+          <span class="owner-only"><input type="file" id="restore-file" accept=".zip,application/zip" /></span>
+          <button type="submit" class="btn btn--danger owner-only" id="restore-btn">Restore from a file</button>
         </div>
+        <p class="hint owner-hint" hidden>Only the owner can restore backups.</p>
       </form>
     </section>
   </main>
@@ -194,7 +271,13 @@
         </div>
         <div class="grid-2">
           <div>
-            <label>Icon<input type="text" id="i-icon" maxlength="40" placeholder="Pick one or type an emoji" /></label>
+            <div class="icon-head">
+              <label for="i-icon">Icon</label>
+              <span id="i-icon-preview" class="icon-preview"></span>
+              <button type="button" class="btn btn--ghost btn--small" id="i-icon-upload">Upload image…</button>
+              <input type="file" id="i-icon-file" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" hidden />
+            </div>
+            <input type="text" id="i-icon" maxlength="60" placeholder="Pick one, type an emoji, or upload an image" />
             <div class="emoji-row" id="i-emoji"></div>
           </div>
           <div class="stack">
@@ -275,6 +358,63 @@
       </div>
     </form>
   </dialog>
+
+  <!-- Which tiles a kiosk shows -->
+  <dialog id="dlg-kiosk">
+    <form method="dialog" id="kiosk-form">
+      <div class="dlg-head"><h3 id="kiosk-title">Tiles on this kiosk</h3><button type="button" class="btn btn--ghost btn--small" data-close>Close</button></div>
+      <div class="dlg-body">
+        <div class="choice-row">
+          <label><input type="radio" name="k-mode" value="all" /> All tiles</label>
+          <label><input type="radio" name="k-mode" value="some" /> Only these groups</label>
+        </div>
+        <div class="chips" id="k-groups"></div>
+        <p class="hint">For example, the dock iPad shows only the Dock and Safety groups. Tiles you add to those groups appear on it automatically.</p>
+        <p class="dlg-error" id="kiosk-error" hidden></p>
+      </div>
+      <div class="dlg-foot"><div class="right"><button type="button" class="btn btn--ghost" data-close>Cancel</button><button type="submit" class="btn">Save</button></div></div>
+    </form>
+  </dialog>
+
+  <!-- Add admin / temporary password -->
+  <dialog id="dlg-admin">
+    <form method="dialog" id="admin-form">
+      <div class="dlg-head"><h3 id="admin-title">Add admin</h3><button type="button" class="btn btn--ghost btn--small" data-close>Close</button></div>
+      <div class="dlg-body" id="admin-fields">
+        <div class="grid-2">
+          <label>Name<input type="text" id="ad-name" maxlength="60" placeholder="Jordan Lee" required /></label>
+          <label>Username<input type="text" id="ad-username" maxlength="40" placeholder="jlee" autocapitalize="none" spellcheck="false" required /></label>
+        </div>
+        <p class="hint">They get a temporary password to sign in with once, then choose their own.</p>
+        <p class="dlg-error" id="admin-error" hidden></p>
+      </div>
+      <div class="dlg-body" id="admin-result" hidden>
+        <p>Give <strong id="ad-r-name"></strong> these details. The password is shown only now.</p>
+        <div class="temp-pass"><div><span class="hint">Address</span><code id="ad-r-url"></code></div><div><span class="hint">Username</span><code id="ad-r-user"></code></div><div><span class="hint">Temporary password</span><code id="ad-r-pass"></code></div></div>
+      </div>
+      <div class="dlg-foot"><div class="right"><button type="button" class="btn btn--ghost" data-close id="admin-cancel">Cancel</button><button type="submit" class="btn" id="admin-save">Add admin</button></div></div>
+    </form>
+  </dialog>
+
+  <!-- Change password (forced on first sign-in) -->
+  <dialog id="dlg-password">
+    <form method="dialog" id="password-form">
+      <div class="dlg-head"><h3 id="password-title">Change your password</h3><button type="button" class="btn btn--ghost btn--small" data-close id="password-close">Close</button></div>
+      <div class="dlg-body">
+        <p class="hint" id="password-intro"></p>
+        <label>Current password<input type="password" id="pw-current" autocomplete="current-password" required /></label>
+        <div class="grid-2">
+          <label>New password<input type="password" id="pw-next" autocomplete="new-password" minlength="8" required /></label>
+          <label>New password again<input type="password" id="pw-again" autocomplete="new-password" minlength="8" required /></label>
+        </div>
+        <p class="hint">At least 8 characters.</p>
+        <p class="dlg-error" id="password-error" hidden></p>
+      </div>
+      <div class="dlg-foot"><div class="right"><button type="submit" class="btn">Save password</button></div></div>
+    </form>
+  </dialog>
+
+  <div id="chart-tip" class="chart-tip" role="tooltip" hidden></div>
 
   <script src="/assets/common.js"></script>
   <script src="/assets/admin.js"></script>

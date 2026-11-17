@@ -11,6 +11,7 @@ const config = {
   sessionSecret: process.env.SESSION_SECRET || "",
   publicUrl: process.env.PUBLIC_URL || "",
   frameAncestors: process.env.FRAME_ANCESTORS || "",
+  mondayToken: process.env.MONDAY_API_TOKEN || "",
 };
 
 if (process.env.RAILWAY_ENVIRONMENT && !process.env.RAILWAY_VOLUME_MOUNT_PATH && !process.env.DATA_DIR) {
